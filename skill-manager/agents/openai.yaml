@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Manager"
+  short_description: "统一盘点、安装、检查和更新本地 Agent skills"
+  default_prompt: "使用 $skill-manager 盘点本地 skills 并报告需要处理的差异。"
