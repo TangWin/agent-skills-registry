@@ -2,9 +2,13 @@
 
 唯一维护目录：`/Users/tangw/.agents/skills`
 
+私有版本仓库：`git@github.com:TangWin/agent-skills-registry.git`
+
 本清单只管理用户安装或自建的全局 skills，不管理 plugins、Agent 内置 skills、项目级 skills、凭据、缓存和会话。Codex 与 Grok 直接读取唯一维护目录；Claude Code 与 Cursor 通过软链接使用受管 skill。
 
 “最后检查”是远端版本检查日期；“仅本地盘点”不代表已经联网确认最新版。来源或版本不明确时保留“待确认”，不得猜测。
+
+每个 skill 的安装、更新和回退使用独立 Git 提交。更新后的版本先作为候选版本试用；确认稳定后使用 `stable/<skill>/<version>` 标签并推送到私有版本仓库。
 
 ## 已纳管
 
