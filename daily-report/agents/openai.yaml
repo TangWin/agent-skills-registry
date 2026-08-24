@@ -1,0 +1,4 @@
+interface:
+  display_name: "日报与复盘"
+  short_description: "采集个人工作证据并生成确认后写入的日报、周报与复盘"
+  default_prompt: "使用 $daily-report 生成今天的个人日报和个人复盘。"

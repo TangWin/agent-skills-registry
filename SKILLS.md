@@ -16,6 +16,7 @@
 |---|---|---|---|---|---|---|---|
 | code-review | `~/.agents/skills/code-review` | [mattpocock/skills](https://github.com/mattpocock/skills) | 并行进行规范与需求符合性审查 | `5b15a47` | 仓库子目录 `skills/engineering/code-review`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | codebase-design | `~/.agents/skills/codebase-design` | [mattpocock/skills](https://github.com/mattpocock/skills) | 深模块设计与接口边界方法 | `5b15a47` | 仓库子目录 `skills/engineering/codebase-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
+| daily-report | `~/.agents/skills/daily-report` | 待确认 | 从 Git、钉钉和手工补录生成日报、周报与复盘 | 本地迁移快照 | 已通过通用兼容性检查；来源确认前不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-24（仅本地盘点） |
 | domain-modeling | `~/.agents/skills/domain-modeling` | [mattpocock/skills](https://github.com/mattpocock/skills) | 建立领域术语、模型和架构决策 | `5b15a47` | 仓库子目录 `skills/engineering/domain-modeling`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | dws | `~/.agents/skills/dws` | 待确认 | 通过 DWS 管理钉钉产品能力 | 待确认；要求 DWS CLI `>=1.0.15` | 来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-13（仅本地盘点） |
 | find-skills | `~/.agents/skills/find-skills` | [vercel-labs/skills](https://github.com/vercel-labs/skills) | 发现并安装开放生态中的 skills | `v1.5.23 / 435076e` | 仓库子目录 `skills/find-skills`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
@@ -41,7 +42,6 @@
 
 | 类型 | Skill | 位置 | 处理原因 |
 |---|---|---|---|
-| 未纳管 | daily-report | `~/.codex/skills`、`~/.claude/skills`、`~/.cc-switch/skills` | Codex 版本与 Claude/cc-switch 版本内容不同，需要选择唯一维护版本 |
 | 未纳管 | daily-report-workspace | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否为用户级独立 skill |
 | 未纳管 | frontend-design | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否跨 Agent 使用 |
 | 未纳管 | hatch-pet | `~/.codex/skills` | 仅 Codex 存在，需确认是否跨 Agent 使用 |
