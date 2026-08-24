@@ -23,6 +23,7 @@
 | frontend-design | `~/.agents/skills/frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) | 为前端页面提供有辨识度、非模板化的视觉设计指导 | `3b3fad9` | 仓库子目录 `skills/frontend-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23 |
 | grill-me | `~/.agents/skills/grill-me` | [mattpocock/skills](https://github.com/mattpocock/skills) | 通过连续追问打磨方案 | `5b15a47` | 仓库子目录 `skills/productivity/grill-me`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | grill-with-docs | `~/.agents/skills/grill-with-docs` | [mattpocock/skills](https://github.com/mattpocock/skills) | 在方案追问时同步沉淀领域文档 | `5b15a47` | 仓库子目录 `skills/engineering/grill-with-docs`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
+| hatch-pet | `~/.agents/skills/.scoped/codex/hatch-pet` | 本地安装 | 创建、修复和验证 Codex 动画宠物资源 | 本地迁移快照 | 依赖 Codex 的 imagegen 系统 skill，仅链接到 Codex | Codex | 2026-08-23（仅本地盘点） |
 | grilling | `~/.agents/skills/grilling` | [mattpocock/skills](https://github.com/mattpocock/skills) | 对计划或设计逐项压力测试 | `5b15a47` | 仓库子目录 `skills/productivity/grilling`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | implement | `~/.agents/skills/implement` | [mattpocock/skills](https://github.com/mattpocock/skills) | 根据 spec 或 tickets 实施工作 | `5b15a47` | 仓库子目录 `skills/engineering/implement`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | neat-freak | `~/.agents/skills/neat-freak` | [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills) | 对代码、文档和记忆进行阶段性同步清理 | `7a5c493` | 仓库子目录 `neat-freak`；更新前检查盘点脚本和评测文件 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
@@ -44,7 +45,6 @@
 |---|---|---|---|
 | 未纳管 | daily-report-workspace | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否为用户级独立 skill |
 | 未纳管 | frontend-design | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否跨 Agent 使用 |
-| 未纳管 | hatch-pet | `~/.codex/skills` | 仅 Codex 存在，需确认是否跨 Agent 使用 |
 | 同名冲突 | find-skills、grill-me、grill-with-docs、setup-matt-pocock-skills、teach | `~/.claude/skills`、`~/.codex/skills` 或 `~/.cc-switch/skills` | 与唯一维护目录内容不同，禁止自动覆盖 |
 | 同名冲突 | neat-freak、storage-analyzer | `~/.claude/skills` 或 `~/.cc-switch/skills` | 与唯一维护目录内容不同，禁止自动覆盖 |
 | 相同副本 | dws | `~/.codex/skills`、`~/.claude/skills` 或 `~/.cc-switch/skills` | 内容相同但仍是实体副本，确认后可改为软链接 |
