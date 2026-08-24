@@ -11,9 +11,13 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 
 - 只管理用户安装或自建的全局 skills。
 - 不管理 plugins、凭据、缓存、会话、Agent 内置 skills 和项目仓库内 skills。
+- Claude Code 专属 plugins（例如 Claude-HUD、Claude-MEM）保留在 `~/.claude/plugins`，即使 plugin 内含 skills，也不迁入唯一维护目录。
 - Codex 与 Grok 直接读取 `/Users/tangw/.agents/skills`。
 - Claude Code 使用 `/Users/tangw/.claude/skills/<name>` 软链接。
 - Cursor 使用 `/Users/tangw/.cursor/skills/<name>` 软链接。
+- CC Switch 只管理模型和供应商；`~/.cc-switch/skills` 仅作为历史残留检查，不是合法 skill 来源。
+- 通用 skill 放在 `/Users/tangw/.agents/skills/<name>`；工具专属 skill 放在 `/Users/tangw/.agents/skills/.scoped/<scope>/<name>`，再按“适用 Agent”链接到工具目录。
+- `SKILLS.md` 的“适用 Agent”决定 Claude Code、Cursor，以及 scoped Codex skill 是否应创建软链接。Grok 当前只直读通用目录，暂不支持 scoped skill。
 - 不覆盖来源不明、本地已修改或同名不同内容的目录。
 - 不向版本仓库提交凭据、账号、缓存、会话、`.env`、`config.env`、私钥或证书私钥。
 - 所有联网检查遵守当前 Agent 的联网 skill、权限和安全规则。
@@ -38,10 +42,17 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/audit_skills.py
 按以下状态报告：
 
 - `linked`：正确指向唯一维护目录。
+- `missing-link`：清单声明适用，但目标 Agent 缺少软链接。
+- `wrong-target`：软链接存在，但没有指向唯一维护目录，包含指向 CC Switch 的链接。
+- `unexpected-link`：清单未声明适用，但目标 Agent 存在该链接。
 - `duplicate-identical`：内容相同但存在实体副本，等待用户确认后改为软链接。
 - `conflict`：同名但内容不同，只报告，不判断哪个版本正确。
 - `unmanaged`：其他 Agent 目录存在、但唯一维护目录没有。
 - `broken-link`：软链接目标失效。
+- `unregistered-canonical`：唯一维护目录存在，但 `SKILLS.md` 未登记。
+- `registered-missing`：`SKILLS.md` 已登记，但唯一维护目录缺失。
+- `unsupported-scope`：skill 的存储位置与直读 Agent 的适用范围无法同时满足。
+- `legacy-cc-switch`：CC Switch 目录仍有残留，只报告，不自动删除。
 
 盘点默认只读。迁移、替换或删除前，逐项展示路径、差异和建议，并等待用户明确确认。
 
@@ -51,7 +62,7 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/audit_skills.py
 2. 在临时目录读取完整 `SKILL.md`，列出 `scripts/`、hooks、可执行文件、联网及外部工具要求。
 3. 向用户展示风险和将写入、链接的准确路径，等待确认。
 4. 目标 `/Users/tangw/.agents/skills/<name>` 已存在时禁止覆盖；内容有差异时转入盘点流程。
-5. 安装后，只在目标位置不存在时创建 Claude Code、Cursor 软链接；禁止替换现有实体目录或不同目标的链接。
+5. 通用 skill 安装在唯一维护目录顶层；工具专属 skill 安装在 `.scoped/<scope>/<name>`。根据“适用 Agent”为 Claude Code、Cursor 和 scoped Codex skill 创建所需软链接；禁止替换现有实体目录或不同目标的链接。Grok 专属或不适用于 Grok 的 skill 不得放在通用目录顶层。
 6. 更新 `SKILLS.md` 的主表，填写来源、版本或 commit、更新说明、适用 Agent 和检查日期。
 7. 运行本 skill 的审计脚本和可用的 skill validator。
 8. 仅在验证成功且用户已授权本次安装时，在 `/Users/tangw/.agents/skills` 创建一个独立候选提交；试用通过后按 Git 版本与远端备份规则标记稳定。
@@ -93,6 +104,8 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/audit_skills.py
 ## 清单约束
 
 - `SKILLS.md` 主表只放已纳管且唯一维护目录真实存在的 skills。
+- 工具专属普通 skill 也必须登记，唯一维护目录填写 `.scoped` 下的真实路径；plugins 不登记。
+- “适用 Agent”必须使用 `Codex`、`Claude Code`、`Cursor`、`Grok`，多个值用中文顿号分隔；审计脚本据此校验加载路径。
 - 来源不明写“待确认”，不得猜测官网、GitHub、版本或兼容性。
 - 内容冲突和未纳管项写入“待确认纳管”区，不混入主表。
 - 安装或更新必须在同一操作中同步修改清单。
