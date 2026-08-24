@@ -52,14 +52,7 @@
 
 ## 待确认纳管
 
-首次盘点发现以下内容，本次不移动、不覆盖、不删除：
-
-| 类型 | Skill | 位置 | 处理原因 |
-|---|---|---|---|
-| 未纳管 | daily-report-workspace | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否为用户级独立 skill |
-| 未纳管 | frontend-design | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否跨 Agent 使用 |
-| 同名冲突 | find-skills、grill-me、grill-with-docs、setup-matt-pocock-skills、teach | `~/.claude/skills`、`~/.codex/skills` 或 `~/.cc-switch/skills` | 与唯一维护目录内容不同，禁止自动覆盖 |
-| 同名冲突 | neat-freak、storage-analyzer | `~/.claude/skills` 或 `~/.cc-switch/skills` | 与唯一维护目录内容不同，禁止自动覆盖 |
+当前无待确认纳管项。迁移前的冲突版本已保存在 `/Users/tangw/skill-migration-backup/20260823-cc-switch-migration`，未删除。
 
 通过以下命令获取实时明细：
 
