@@ -18,7 +18,20 @@
 | codebase-design | `~/.agents/skills/codebase-design` | [mattpocock/skills](https://github.com/mattpocock/skills) | 深模块设计与接口边界方法 | `5b15a47` | 仓库子目录 `skills/engineering/codebase-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | daily-report | `~/.agents/skills/daily-report` | 待确认 | 从 Git、钉钉和手工补录生成日报、周报与复盘 | 本地迁移快照 | 已通过通用兼容性检查；来源确认前不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-24（仅本地盘点） |
 | domain-modeling | `~/.agents/skills/domain-modeling` | [mattpocock/skills](https://github.com/mattpocock/skills) | 建立领域术语、模型和架构决策 | `5b15a47` | 仓库子目录 `skills/engineering/domain-modeling`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
-| dws | `~/.agents/skills/dws` | 待确认 | 通过 DWS 管理钉钉产品能力 | 待确认；要求 DWS CLI `>=1.0.15` | 来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-13（仅本地盘点） |
+| dingtalk-aisearch | `~/.agents/skills/dingtalk-aisearch` | 待确认 | 钉钉人员语义搜索与跨源定位 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-aitable | `~/.agents/skills/dingtalk-aitable` | 待确认 | 钉钉 AI 表格管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-calendar | `~/.agents/skills/dingtalk-calendar` | 待确认 | 钉钉日历与会议室管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-chat | `~/.agents/skills/dingtalk-chat` | 待确认 | 钉钉群聊与消息管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-contact | `~/.agents/skills/dingtalk-contact` | 待确认 | 钉钉通讯录精确查询 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-doc | `~/.agents/skills/dingtalk-doc` | 待确认 | 钉钉在线文档管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-drive | `~/.agents/skills/dingtalk-drive` | 待确认 | 钉钉文件与文档空间管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-event | `~/.agents/skills/dingtalk-event` | 待确认 | 钉钉个人 IM 与审批事件监听 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-mail | `~/.agents/skills/dingtalk-mail` | 待确认 | 钉钉邮箱管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-minutes | `~/.agents/skills/dingtalk-minutes` | 待确认 | 钉钉 AI 听记查询 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-misc | `~/.agents/skills/dingtalk-misc` | 待确认 | 钉钉长尾产品能力入口 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-shared | `~/.agents/skills/dingtalk-shared` | 待确认 | 钉钉跨产品共享入口 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-todo | `~/.agents/skills/dingtalk-todo` | 待确认 | 钉钉待办管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| dingtalk-wiki | `~/.agents/skills/dingtalk-wiki` | 待确认 | 钉钉知识库与空间管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
 | find-skills | `~/.agents/skills/find-skills` | [vercel-labs/skills](https://github.com/vercel-labs/skills) | 发现并安装开放生态中的 skills | `v1.5.23 / 435076e` | 仓库子目录 `skills/find-skills`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | frontend-design | `~/.agents/skills/frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) | 为前端页面提供有辨识度、非模板化的视觉设计指导 | `3b3fad9` | 仓库子目录 `skills/frontend-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23 |
 | grill-me | `~/.agents/skills/grill-me` | [mattpocock/skills](https://github.com/mattpocock/skills) | 通过连续追问打磨方案 | `5b15a47` | 仓库子目录 `skills/productivity/grill-me`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
@@ -47,7 +60,6 @@
 | 未纳管 | frontend-design | `~/.claude/skills` | 仅 Claude Code 存在，需确认是否跨 Agent 使用 |
 | 同名冲突 | find-skills、grill-me、grill-with-docs、setup-matt-pocock-skills、teach | `~/.claude/skills`、`~/.codex/skills` 或 `~/.cc-switch/skills` | 与唯一维护目录内容不同，禁止自动覆盖 |
 | 同名冲突 | neat-freak、storage-analyzer | `~/.claude/skills` 或 `~/.cc-switch/skills` | 与唯一维护目录内容不同，禁止自动覆盖 |
-| 相同副本 | dws | `~/.codex/skills`、`~/.claude/skills` 或 `~/.cc-switch/skills` | 内容相同但仍是实体副本，确认后可改为软链接 |
 
 通过以下命令获取实时明细：
 
