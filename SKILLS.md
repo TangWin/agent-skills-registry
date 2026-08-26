@@ -32,6 +32,7 @@
 | dingtalk-shared | `~/.agents/skills/dingtalk-shared` | 待确认 | 钉钉跨产品共享入口 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
 | dingtalk-todo | `~/.agents/skills/dingtalk-todo` | 待确认 | 钉钉待办管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
 | dingtalk-wiki | `~/.agents/skills/dingtalk-wiki` | 待确认 | 钉钉知识库与空间管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
+| ego-browser | `~/.agents/skills/ego-browser` | [ego lite 官网](https://lite.ego.app/) | AI 友好的 Chromium 浏览器自动化（ego lite 内置 skill） | `v1.2.3`（ego lite 0.4.7.3 内置） | 唯一维护目录处为 ego 安装器自管软链接，指向 app 内置目录并随 app 升级自动更新；仓库只记录链接，不备份 skill 内容 | Codex、Claude Code、Cursor、Grok | 2026-08-26 |
 | find-skills | `~/.agents/skills/find-skills` | [vercel-labs/skills](https://github.com/vercel-labs/skills) | 发现并安装开放生态中的 skills | `v1.5.23 / 435076e` | 仓库子目录 `skills/find-skills`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | frontend-design | `~/.agents/skills/frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) | 为前端页面提供有辨识度、非模板化的视觉设计指导 | `3b3fad9` | 仓库子目录 `skills/frontend-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23 |
 | grill-me | `~/.agents/skills/grill-me` | [mattpocock/skills](https://github.com/mattpocock/skills) | 通过连续追问打磨方案 | `5b15a47` | 仓库子目录 `skills/productivity/grill-me`；更新前处理现有冲突副本 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
