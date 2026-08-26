@@ -16,7 +16,7 @@
 |---|---|---|---|---|---|---|---|
 | code-review | `~/.agents/skills/code-review` | [mattpocock/skills](https://github.com/mattpocock/skills) | 并行进行规范与需求符合性审查 | `5b15a47` | 仓库子目录 `skills/engineering/code-review`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | codebase-design | `~/.agents/skills/codebase-design` | [mattpocock/skills](https://github.com/mattpocock/skills) | 深模块设计与接口边界方法 | `5b15a47` | 仓库子目录 `skills/engineering/codebase-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
-| daily-report | `~/.agents/skills/daily-report` | 待确认 | 从 Git、钉钉和手工补录生成日报、周报与复盘 | 本地迁移快照 | 已通过通用兼容性检查；来源确认前不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-24（仅本地盘点） |
+| daily-report | `~/.agents/skills/daily-report` | 待确认 | 从 Git、钉钉和手工补录生成日报、周报、月度总结与复盘 | 本地迭代 2026-08-26 | 本地自研迭代：按群拉取消息、私聊自动翻页、昨日计划追问、时区统一、月度总结模式；来源确认前不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-26 |
 | domain-modeling | `~/.agents/skills/domain-modeling` | [mattpocock/skills](https://github.com/mattpocock/skills) | 建立领域术语、模型和架构决策 | `5b15a47` | 仓库子目录 `skills/engineering/domain-modeling`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | dingtalk-aisearch | `~/.agents/skills/dingtalk-aisearch` | 待确认 | 钉钉人员语义搜索与跨源定位 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |
 | dingtalk-aitable | `~/.agents/skills/dingtalk-aitable` | 待确认 | 钉钉 AI 表格管理 | 待确认；要求 DWS CLI | DWS 拆分 skill；来源确认前只允许本地维护，不自动更新 | Codex、Claude Code、Cursor、Grok | 2026-08-23（仅本地盘点） |

@@ -2,6 +2,16 @@
 
 配置位置固定为 `<project-root>/docs/report/daily-report.config.yml`。它包含个人身份、群范围和私人目录，不应提交版本库。
 
+## 校验入口
+
+生成任何报告前用脚本校验配置，不要人工逐字段核对：
+
+```bash
+node scripts/monthly-report.mjs check-config --file <配置路径>
+```
+
+输出 JSON 含 `status`（`ok` / `invalid` / `missing_config`）、`missing`、`warnings`、`hints` 和 `summary`。`status` 非 `ok` 时退出码为 2；把 `hints` 原样转述给用户即可，不要自行编写补救文案。旧格式配置（见下文）计入统计并产生兼容警告，不算缺失。
+
 ```yaml
 timezone: "Asia/Shanghai"
 

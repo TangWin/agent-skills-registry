@@ -1,19 +1,23 @@
-### 本周概览
+### 本月概览
 
-{{week_overview_one_or_two_sentences}}
+{{month_overview_two_or_three_sentences}}
 
 ### 业务主线
 
 #### {{business_line_1_title}}
 
 - 背景：{{background}}
-- 本周进展：{{progress}}
+- 本月进展：{{progress}}
 - 现状/问题：{{status_or_issue}}
 - 下一步：{{next_step}}
 
-### 下周计划
+### 数据与事实
 
-1. {{next_week_plan_1}}
+1. {{fact_with_source_1}}
+
+### 下月计划
+
+1. {{next_month_plan_1}}
 
 ### 风险与阻塞
 
