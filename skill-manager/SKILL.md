@@ -33,10 +33,16 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 
 ## 首次盘点或审计
 
-运行：
+运行命令行审计：
 
 ```bash
 python3 /Users/tangw/.agents/skills/skill-manager/scripts/audit_skills.py
+```
+
+或启动 Web 可视化管理控制台：
+
+```bash
+python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py
 ```
 
 按以下状态报告：
