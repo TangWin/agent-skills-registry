@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,11 @@ IGNORED_NAMES = {".system", "skills-cursor"}
 IGNORED_PARTS = {".git", "__pycache__", ".DS_Store"}
 PROBLEM_STATUSES = {
     "broken-link",
+    "invalid-manifest",
+    "invalid-skill",
+    "duplicate-name",
+    "content-drift",
+    "metadata-drift",
     "conflict",
     "duplicate-identical",
     "legacy-cc-switch",
@@ -51,54 +57,81 @@ def skill_entries(root: Path) -> dict[str, Path]:
     for path in sorted(root.iterdir(), key=lambda item: item.name):
         if path.name.startswith(".") or path.name in IGNORED_NAMES:
             continue
-        if path.is_symlink() or (path.is_dir() and (path / "SKILL.md").is_file()):
+        if path.is_symlink() or path.is_dir():
             result[path.name] = path
     return result
 
 
-def parse_manifest(path: Path) -> dict[str, dict[str, Any]]:
-    """从 SKILLS.md 的“已纳管”表读取 skill 与适用 Agent。"""
-    lines = path.read_text(encoding="utf-8").splitlines()
-    in_managed_section = False
-    column_names: list[str] | None = None
-    result: dict[str, dict[str, Any]] = {}
-
-    for line in lines:
-        if line.strip() == "## 已纳管":
-            in_managed_section = True
+def manifest_rows(path: Path) -> list[dict[str, Any]]:
+    """严格读取人工清单；错误必须带行号，不能静默丢失登记。"""
+    rows: list[dict[str, Any]] = []
+    columns = None
+    active = False
+    seen = set()
+    paths = set()
+    required = {"名称", "唯一维护目录", "适用 Agent"}
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        text = line.strip()
+        if text == "## 已纳管":
+            if active or columns is not None:
+                raise ValueError(f"第 {number} 行：重复的已纳管章节")
+            active = True
             continue
-        if in_managed_section and line.startswith("## "):
-            break
-        if not in_managed_section or not line.startswith("|"):
+        if active and text.startswith("## "):
+            active = False
+        if not active or not text.startswith("|"):
             continue
-
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if "名称" in cells and "适用 Agent" in cells:
-            column_names = cells
+        cells = [cell.strip() for cell in text.strip("|").split("|")]
+        if columns is None:
+            if not required.issubset(cells) or len(cells) != len(set(cells)):
+                raise ValueError(f"第 {number} 行：缺失或重复的清单列")
+            columns = cells
             continue
-        if column_names is None or all(set(cell) <= {"-", ":"} for cell in cells):
+        if all(cell and set(cell) <= {"-", ":"} for cell in cells):
             continue
-        if len(cells) != len(column_names):
-            continue
-
-        row = dict(zip(column_names, cells))
+        if len(cells) != len(columns):
+            raise ValueError(f"第 {number} 行：列数不一致，请勿在单元格中使用竖线")
+        row = dict(zip(columns, cells))
         name = row["名称"].strip("`")
-        agents = {
-            AGENT_NAMES[item.strip()]
-            for item in row["适用 Agent"].split("、")
-            if item.strip() in AGENT_NAMES
-        }
-        if name:
-            canonical_path = Path(row["唯一维护目录"].strip("`")).expanduser()
-            result[name] = {"agents": agents, "path": canonical_path}
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name) or name in seen:
+            raise ValueError(f"第 {number} 行：名称非法或重复：{name}")
+        agents = row["适用 Agent"].split("、")
+        if any(a not in AGENT_NAMES for a in agents) or len(agents) != len(set(agents)):
+            raise ValueError(f"第 {number} 行：适用 Agent 未知、重复或为空")
+        canonical = Path(row["唯一维护目录"].strip("`")).expanduser()
+        try:
+            relative = canonical.relative_to(CANONICAL_ROOT)
+        except ValueError:
+            raise ValueError(f"第 {number} 行：维护目录不在受管根目录内") from None
+        parts = relative.parts
+        if ".." in parts or canonical.name != name or not (
+            len(parts) == 1 or (len(parts) == 3 and parts[0] == ".scoped")
+        ):
+            raise ValueError(f"第 {number} 行：维护目录与名称或 scoped 布局不一致")
+        if str(canonical) in paths:
+            raise ValueError(f"第 {number} 行：维护目录重复")
+        seen.add(name)
+        paths.add(str(canonical))
+        rows.append({**row, "_name": name, "_path": canonical, "_line": number})
+    if columns is None or not rows:
+        raise ValueError("清单缺少有效的已纳管表或登记行")
+    return rows
 
-    return result
+
+def parse_manifest(path: Path) -> dict[str, dict[str, Any]]:
+    return {
+        row["_name"]: {
+            "agents": {AGENT_NAMES[a] for a in row["适用 Agent"].split("、")},
+            "path": row["_path"], "row": row,
+        }
+        for row in manifest_rows(path)
+    }
 
 
 def folder_hash(path: Path) -> str | None:
     try:
         resolved = path.resolve(strict=True)
-    except FileNotFoundError:
+    except (OSError, RuntimeError):
         return None
     if not (resolved / "SKILL.md").is_file():
         return None
@@ -110,6 +143,7 @@ def folder_hash(path: Path) -> str | None:
         relative = file_path.relative_to(resolved).as_posix()
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
+        digest.update(b"x" if file_path.stat().st_mode & 0o111 else b"-")
         digest.update(file_path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
@@ -126,20 +160,45 @@ def finding(agent: str, name: str, status: str, path: Path, target: str = "") ->
 
 
 def inspect() -> dict[str, Any]:
-    registered = parse_manifest(MANIFEST_PATH)
+    findings: list[dict[str, str]] = []
+    try:
+        registered = parse_manifest(MANIFEST_PATH)
+    except (ValueError, OSError) as exc:
+        registered = {}
+        findings.append(finding("registry", "SKILLS.md", "invalid-manifest", MANIFEST_PATH, str(exc)))
     canonical = skill_entries(CANONICAL_ROOT)
     scoped_root = CANONICAL_ROOT / ".scoped"
     if scoped_root.is_dir():
-        for skill_file in sorted(scoped_root.rglob("SKILL.md")):
-            canonical.setdefault(skill_file.parent.name, skill_file.parent)
+        for scope in sorted(scoped_root.iterdir()):
+            for name, path in skill_entries(scope).items():
+                if name in canonical:
+                    findings.append(finding("registry", name, "duplicate-name", path))
+                else:
+                    canonical[name] = path
     canonical_hashes = {name: folder_hash(path) for name, path in canonical.items()}
-    findings: list[dict[str, str]] = []
 
     for name, path in canonical.items():
         if name not in registered:
             findings.append(finding("registry", name, "unregistered-canonical", path))
             continue
+        if canonical_hashes[name] is None:
+            findings.append(finding("registry", name, "invalid-skill", path))
         declared_path = registered[name]["path"]
+        lock_path = CANONICAL_ROOT / ".skill-locks" / f"{name}.json"
+        if lock_path.exists():
+            try:
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                if lock["content_hash"] != canonical_hashes[name]:
+                    findings.append(finding("registry", name, "content-drift", path))
+            except (ValueError, KeyError, TypeError):
+                findings.append(finding("registry", name, "invalid-manifest", lock_path))
+        if path.is_symlink():
+            version = registered[name]["row"].get("当前版本、commit 或锁定哈希", "")
+            recorded = re.search(r"ego lite ([0-9.]+)", version)
+            actual = re.search(r"/Versions/([^/]+)/", str(path.resolve(strict=False)))
+            if recorded and actual and recorded.group(1) != actual.group(1):
+                findings.append(finding("registry", name, "metadata-drift", path,
+                                        f"登记应用版本 {recorded.group(1)}，实际 {actual.group(1)}"))
         if path.resolve(strict=False) != declared_path.resolve(strict=False):
             findings.append(finding("registry", name, "wrong-target", path, str(declared_path)))
         if path.parent == CANONICAL_ROOT:
@@ -149,7 +208,7 @@ def inspect() -> dict[str, Any]:
             findings.append(finding("grok", name, "unsupported-scope", path))
 
     for name in registered.keys() - canonical.keys():
-        findings.append(finding("registry", name, "registered-missing", CANONICAL_ROOT / name))
+        findings.append(finding("registry", name, "registered-missing", registered[name]["path"]))
 
     for agent, root in LINK_ROOTS.items():
         entries = skill_entries(root)
@@ -163,6 +222,9 @@ def inspect() -> dict[str, Any]:
             if path is None:
                 if expected and canonical_path is not None:
                     findings.append(finding(agent, name, "missing-link", root / name))
+                continue
+            if path.is_symlink() and not path.exists():
+                findings.append(finding(agent, name, "broken-link", path))
                 continue
             if canonical_path is None:
                 findings.append(finding(agent, name, "unmanaged", path))

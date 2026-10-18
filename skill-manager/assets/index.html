@@ -8,15 +8,11 @@
   <!-- Favicon (SVG 拼图徽标) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%235e6ad2'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='56'>🧩</text></svg>">
   
-  <!-- Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  
-  <!-- Vue 3 + Tailwind CSS -->
-  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  
+  <!-- 固定本地依赖；写入会话不加载第三方脚本。 -->
+  <script>window.SKILL_SESSION = __SKILL_SESSION__;</script>
+  <script src="/vendor/vue-3.4.21.global.prod.js"></script>
+  <script src="/vendor/tailwind-3.4.17.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -102,6 +98,27 @@
       box-shadow: 0 1px 4px rgba(94, 106, 210, 0.3);
     }
 
+    html.dark .agent-pill.warning {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.55);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+    }
+    html.dark .agent-pill.warning:hover {
+      background: rgba(245, 158, 11, 0.28);
+      border-color: rgba(245, 158, 11, 0.7);
+    }
+    html:not(.dark) .agent-pill.warning {
+      background: #fef3c7;
+      color: #b45309;
+      border-color: #f59e0b;
+      box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+    }
+    html:not(.dark) .agent-pill.warning:hover {
+      background: #fde68a;
+      border-color: #d97706;
+    }
+
     html.dark .agent-pill.inactive {
       background: rgba(255, 255, 255, 0.02);
       color: #62666d;
@@ -176,7 +193,7 @@
           <span v-if="gitStatus.ahead" class="text-amber-500 font-medium px-1 rounded bg-amber-500/10">待推送</span>
           <button 
             @click="pushGit" 
-            :disabled="pushingGit || !gitStatus.ahead"
+            :disabled="!canWrite || pushingGit || !gitStatus.ahead"
             class="ml-1 px-2.5 py-0.5 text-xs rounded bg-[var(--accent-brand)] hover:bg-[var(--accent-hover)] text-white font-medium disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
             {{ pushingGit ? '推送中...' : '推送到远端' }}
@@ -327,6 +344,7 @@
       </div>
     </div>
 
+    <p class="text-xs mb-4 text-[var(--text-muted)]">{{ canWrite ? '写入模式：预览并确认后执行；更新生成候选提交，不自动推送。' : '只读模式：可以盘点与检查更新，文件和软链接不会被修改。' }}</p>
     <!-- 视图 1：套件分组模式 (支持折叠/展开 + 一键折叠/展开全部) -->
     <div v-if="viewMode === 'grouped'" class="mt-5 space-y-4">
       
@@ -432,12 +450,12 @@
             <button 
               v-if="groupUpdateResults[grp.id] && groupUpdateResults[grp.id].has_update"
               @click="upgradeGroup(grp.id)"
-              :disabled="upgradingGroupId === grp.id"
+              :disabled="!canWrite || upgradingGroupId === grp.id"
               class="px-3.5 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow transition flex items-center gap-1.5 animate-pulse"
-              title="一键拉取仓库最新版本并升级本套件全部技能"
+              title="预览固定版本差异，确认后逐 skill 生成独立提交"
             >
               <span v-if="upgradingGroupId === grp.id" class="animate-spin text-[10px]">⚙️</span>
-              <span>🚀 一键升级整包 ({{ groupUpdateResults[grp.id].latest_version }})</span>
+              <span>预览套件更新</span>
             </button>
 
             <span v-else-if="groupUpdateResults[grp.id] && !groupUpdateResults[grp.id].has_update" class="text-xs text-[var(--text-muted)] font-mono px-2">
@@ -505,11 +523,11 @@
                       :key="ag"
                       @click="toggleSkillAgent(s.name, ag)"
                       class="agent-pill px-2 py-0.5 rounded-md border text-[10px] font-mono cursor-pointer flex items-center gap-1"
-                      :class="getWorkingAgents(s.name).includes(ag) ? 'active' : 'inactive'"
-                      :title="'点击切换 ' + ag"
+                      :class="getAgentPillState(s, ag).class"
+                      :title="getAgentPillState(s, ag).tooltip"
                     >
                       <span>{{ ag === 'Claude Code' ? 'Claude' : ag }}</span>
-                      <span v-if="getWorkingAgents(s.name).includes(ag)" class="text-[9px] opacity-80">✓</span>
+                      <span v-if="getAgentPillState(s, ag).icon" class="text-[9px]" :class="{'opacity-80': getAgentPillState(s, ag).icon === '✓', 'text-amber-400 font-bold': getAgentPillState(s, ag).icon === '⚠️'}">{{ getAgentPillState(s, ag).icon }}</span>
                     </button>
                   </div>
                 </td>
@@ -518,7 +536,7 @@
                 <td class="p-3.5 w-44 font-mono text-[11px]">
                   <div class="flex items-center gap-1">
                     <span class="text-[var(--text-muted)]">版本:</span>
-                    <span class="text-[var(--text-primary)] px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[10px]">{{ s.version || '本地' }}</span>
+                    <span class="text-[var(--text-primary)] px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[10px]">{{ s.version || '本地' }} · {{ {candidate: '待试用', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[s.version_state] }}</span>
                   </div>
                   <div v-if="updateResults[s.name]" class="mt-0.5">
                     <span v-if="updateResults[s.name].has_update" class="text-emerald-500 text-[10px] font-semibold flex items-center gap-1">
@@ -530,49 +548,59 @@
                   </div>
                 </td>
 
-                <!-- 单项操作：升级单个 / 检查单个 / 更新日志 / 详情 -->
-                <td class="p-3.5 w-40 text-center">
-                  <div class="flex items-center justify-center gap-1.5">
-                    <!-- 单个升级 -->
+                <!-- 单项极简操作栏 (现代微交互：图标 + 文字胶囊) -->
+                <td class="p-3.5 w-36 text-center">
+                  <div class="flex items-center justify-center gap-1">
+                    
+                    <!-- 升级动作 (高亮微胶囊) -->
                     <button 
                       v-if="updateResults[s.name] && updateResults[s.name].has_update"
                       @click="upgradeSkill(s.name)"
-                      :disabled="upgradingSkillName === s.name"
-                      class="px-2 py-0.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition"
-                      title="仅升级当前这一个 Skill"
+                      :disabled="!canWrite || upgradingSkillName === s.name"
+                      class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
+                      title="升级该技能"
                     >
-                      <span>升级单个</span>
+                      <span v-if="upgradingSkillName === s.name" class="animate-spin text-[10px]">⚙️</span>
+                      <span v-else>预览更新</span>
                     </button>
 
-                    <!-- 查看单个更新日志 -->
+                    <!-- 更新日志按钮 (仅在有差异日志时展现) -->
                     <button 
                       v-if="updateResults[s.name] && updateResults[s.name].diff_summary"
                       @click="openChangelog(s.name, updateResults[s.name].diff_summary)"
-                      class="px-2 py-0.5 text-xs rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition"
-                      title="查看版本变更历史"
+                      class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-blue-400 hover:text-blue-300 transition"
+                      title="查看更新日志"
                     >
-                      日志
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
                     </button>
 
-                    <!-- 单个检查 -->
+                    <!-- 检查更新按钮 (极简图标按钮) -->
                     <button 
                       v-else-if="s.github_repo"
                       @click="checkSingleUpdate(s.name)"
                       :disabled="checkingSkillName === s.name"
-                      class="px-2 py-0.5 text-xs rounded bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition"
-                      title="单独检查更新"
+                      class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                      title="检查上游更新"
                     >
-                      <span v-if="checkingSkillName === s.name" class="animate-spin text-[10px]">🔄</span>
-                      <span v-else>检查</span>
+                      <svg class="w-3.5 h-3.5" :class="{'animate-spin text-[var(--accent-brand)]': checkingSkillName === s.name}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                      </svg>
                     </button>
 
-                    <!-- 详情 -->
+                    <!-- 详情按钮 (极简图标按钮) -->
                     <button 
                       @click="openDetail(s)"
-                      class="px-2 py-0.5 text-xs rounded bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition"
+                      class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                      title="查看详情与源码"
                     >
-                      详情
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                      </svg>
                     </button>
+
                   </div>
                 </td>
               </tr>
@@ -660,16 +688,17 @@
                     :key="ag"
                     @click="toggleSkillAgent(s.name, ag)"
                     class="agent-pill px-2 py-0.5 rounded-md border text-[10px] font-mono cursor-pointer flex items-center gap-1"
-                    :class="getWorkingAgents(s.name).includes(ag) ? 'active' : 'inactive'"
+                    :class="getAgentPillState(s, ag).class"
+                    :title="getAgentPillState(s, ag).tooltip"
                   >
                     <span>{{ ag === 'Claude Code' ? 'Claude' : ag }}</span>
-                    <span v-if="getWorkingAgents(s.name).includes(ag)" class="text-[9px] opacity-80">✓</span>
+                    <span v-if="getAgentPillState(s, ag).icon" class="text-[9px]" :class="{'opacity-80': getAgentPillState(s, ag).icon === '✓', 'text-amber-400 font-bold': getAgentPillState(s, ag).icon === '⚠️'}">{{ getAgentPillState(s, ag).icon }}</span>
                   </button>
                 </div>
               </td>
 
               <td class="p-3.5 font-mono text-[11px]">
-                <div class="text-[var(--text-primary)]">{{ s.version || '本地' }}</div>
+                <div class="text-[var(--text-primary)]">{{ s.version || '本地' }} · {{ {candidate: '待试用', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[s.version_state] }}</div>
                 <div v-if="updateResults[s.name] && updateResults[s.name].has_update" class="text-emerald-500 text-[10px] font-semibold">
                   可升至 {{ updateResults[s.name].latest_version }}
                 </div>
@@ -677,33 +706,50 @@
 
               <td class="p-3.5 text-center">
                 <div class="flex items-center justify-center gap-1">
+                  <!-- 升级动作 -->
                   <button 
                     v-if="updateResults[s.name] && updateResults[s.name].has_update"
                     @click="upgradeSkill(s.name)"
-                    :disabled="upgradingSkillName === s.name"
-                    class="px-2 py-0.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                    :disabled="!canWrite || upgradingSkillName === s.name"
+                    class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
                   >
-                    升级
+                    <span>预览更新</span>
                   </button>
+
+                  <!-- 查看日志 -->
                   <button 
                     v-if="updateResults[s.name] && updateResults[s.name].diff_summary"
                     @click="openChangelog(s.name, updateResults[s.name].diff_summary)"
-                    class="px-2 py-0.5 text-xs rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-blue-400 hover:text-blue-300 transition"
+                    title="查看更新日志"
                   >
-                    日志
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
                   </button>
+
+                  <!-- 检查 -->
                   <button 
                     v-else-if="s.github_repo"
                     @click="checkSingleUpdate(s.name)"
-                    class="px-2 py-0.5 text-xs rounded bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)]"
+                    class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                    title="检查更新"
                   >
-                    检查
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
                   </button>
+
+                  <!-- 详情 -->
                   <button 
                     @click="openDetail(s)"
-                    class="px-2 py-0.5 text-xs rounded bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)]"
+                    class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                    title="查看详情"
                   >
-                    详情
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
                   </button>
                 </div>
               </td>
@@ -741,7 +787,7 @@
         />
         <button 
           @click="submitBatchSave" 
-          :disabled="changeCount === 0 || saving"
+          :disabled="!canWrite || changeCount === 0 || saving"
           class="px-6 py-2.5 rounded-xl bg-[var(--accent-brand)] hover:bg-[var(--accent-hover)] text-white font-semibold text-xs disabled:opacity-30 disabled:cursor-not-allowed shadow-md transition flex items-center gap-2"
         >
           <svg v-if="saving" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -809,6 +855,11 @@
           </div>
 
           <!-- 文件改动统计 -->
+          <div v-if="activeChangelog.data.patch">
+            <p class="text-xs mb-2">请检查脚本、hooks、依赖和权限变化。以下为实际文件差异：</p>
+            <pre class="text-xs whitespace-pre-wrap max-h-80 overflow-auto">{{ activeChangelog.data.patch }}</pre>
+          </div>
+          <p v-if="activeChangelog.data.truncated" class="text-rose-500 text-xs">差异过大，已截断；禁止自动更新，请人工检查完整内容。</p>
           <div v-if="activeChangelog.data.diff_stat">
             <label class="block text-[var(--text-muted)] font-semibold mb-1">文件变更统计 (Diff Stat)：</label>
             <pre class="bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono text-[10px] overflow-x-auto max-h-32 custom-scrollbar whitespace-pre-wrap">{{ activeChangelog.data.diff_stat }}</pre>
@@ -820,6 +871,7 @@
           <span class="text-[11px] text-[var(--text-muted)] font-mono">
             仓库: {{ activeChangelog.data.repo }}
           </span>
+          <button v-if="activeChangelog.approve" :disabled="activeChangelog.data.truncated" @click="activeChangelog.approve()" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs disabled:opacity-30">确认按此差异更新</button>
           <button @click="activeChangelog = null" class="px-4 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">关闭</button>
         </div>
 
@@ -836,6 +888,7 @@
             <div>
               <h3 class="font-bold text-[var(--text-primary)] text-sm font-mono">{{ activeSkill.name }}</h3>
               <p class="text-[11px] text-[var(--text-muted)] font-mono">{{ activeSkill.path }}</p>
+              <p v-for="f in activeSkill.findings.filter(f => f.status !== 'linked')" class="text-xs text-amber-500">{{ f.status }}：{{ f.target || f.path }}</p>
             </div>
           </div>
           <button @click="activeSkill = null" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-base p-1.5 rounded-lg hover:bg-[var(--bg-surface-hover)] transition">✕</button>
@@ -899,6 +952,16 @@
 
     createApp({
       setup() {
+        const canWrite = !!window.SKILL_SESSION.write;
+        const fetch = (url, options = {}) => window.fetch(url, {
+          ...options,
+          headers: { 'Content-Type': 'application/json', ...options.headers, 'X-Skill-Token': window.SKILL_SESSION.token }
+        });
+        const requireWrite = () => {
+          if (canWrite) return true;
+          showToast('当前为只读模式；需显式使用 --allow-write 启动', 'error');
+          return false;
+        };
         const skills = ref([]);
         const groups = ref([]);
         const audit = ref({});
@@ -976,6 +1039,7 @@
           try {
             const res = await fetch('/api/skills');
             const data = await res.json();
+            if (!res.ok || data.ok === false) throw new Error(data.error || "读取失败");
             skills.value = data.skills || [];
             groups.value = data.groups || [];
             audit.value = data.audit || {};
@@ -1006,7 +1070,40 @@
         const hasChanges = (skillName) => modifiedAgents.value[skillName] !== undefined;
         const changeCount = computed(() => Object.keys(modifiedAgents.value).length);
 
+        const agentKeyMap = {
+          'Codex': 'codex',
+          'Claude Code': 'claude-code',
+          'Cursor': 'cursor',
+          'Grok': 'grok'
+        };
+
+        const getAgentPillState = (skill, agentName) => {
+          if (!skill) return { class: 'inactive', icon: '', tooltip: '' };
+          const isSelected = getWorkingAgents(skill.name).includes(agentName);
+          const key = agentKeyMap[agentName] || agentName.toLowerCase();
+          const f = (skill.findings || []).find(item => item.agent === key);
+
+          if (!isSelected) {
+            if (f && f.status === 'unexpected-link') {
+              return { class: 'warning', icon: '⚠️', tooltip: `${agentName}: 清单未配置，但物理软链接存在 (unexpected-link)` };
+            }
+            return { class: 'inactive', icon: '', tooltip: `点击配置给 ${agentName}` };
+          }
+
+          if (hasChanges(skill.name)) {
+            return { class: 'active opacity-90 border-dashed', icon: '✎', tooltip: `${agentName}: 已在前端更改，尚未保存` };
+          }
+
+          if (f && f.status && f.status !== 'linked') {
+            const msg = f.status === 'missing-link' ? '清单已配置，但软链接缺失 (missing-link)' : `存在异常 (${f.status})`;
+            return { class: 'warning', icon: '⚠️', tooltip: `${agentName}: ${msg}` };
+          }
+
+          return { class: 'active', icon: '✓', tooltip: `${agentName}: 软链接正常已就绪 (点击切换)` };
+        };
+
         const toggleSkillAgent = (skillName, agentName) => {
+          if (!requireWrite()) return;
           const current = [...getWorkingAgents(skillName)];
           const idx = current.indexOf(agentName);
           if (idx > -1) {
@@ -1018,6 +1115,7 @@
         };
 
         const batchAddAgent = (agentName) => {
+          if (!requireWrite()) return;
           selectedSkills.value.forEach(name => {
             const current = getWorkingAgents(name);
             if (!current.includes(agentName)) {
@@ -1028,6 +1126,7 @@
         };
 
         const batchRemoveAgent = (agentName) => {
+          if (!requireWrite()) return;
           selectedSkills.value.forEach(name => {
             const current = getWorkingAgents(name);
             if (current.includes(agentName)) {
@@ -1093,13 +1192,13 @@
           };
         };
 
-        const upgradeSkill = async (skillName) => {
+        const applyUpgradeSkill = async (skillName, planId) => {
           upgradingSkillName.value = skillName;
           try {
             const res = await fetch('/api/upgrade-skill', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ skill_name: skillName })
+              body: JSON.stringify({ plan_id: planId })
             });
             const data = await res.json();
             if (data.ok) {
@@ -1116,27 +1215,54 @@
           }
         };
 
-        const upgradeGroup = async (groupId) => {
+        const applyUpgradeGroup = async (groupId, planId) => {
           upgradingGroupId.value = groupId;
           try {
             const res = await fetch('/api/upgrade-group', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ group_id: groupId })
+              body: JSON.stringify({ plan_id: planId })
             });
             const data = await res.json();
             if (data.ok) {
               showToast(data.message);
+              
+              // 关键联动：整包升级成功后，同步清理该套件下所有技能的单个待更新徽章和日志
+              const grp = groups.value.find(g => g.id === groupId);
+              if (grp && grp.skills) {
+                grp.skills.forEach(s => {
+                  delete updateResults.value[s.name];
+                });
+              }
               delete groupUpdateResults.value[groupId];
               await fetchData();
             } else {
-              showToast('套件升级失败：' + data.error, 'error');
+              showToast('套件停止：' + data.error + '；已完成：' + (data.completed || []).join('、'), 'error');
+              await fetchData();
             }
           } catch (e) {
             showToast('套件升级异常：' + e.message, 'error');
           } finally {
             upgradingGroupId.value = null;
           }
+        };
+
+        const upgradeSkill = (name) => {
+          if (!requireWrite()) return;
+          const plan = updateResults.value[name];
+          if (!plan?.plan_id) return showToast('请先重新检查更新', 'error');
+          activeChangelog.value = { title: name, data: plan.diff_summary,
+            approve: async () => { activeChangelog.value = null; await applyUpgradeSkill(name, plan.plan_id); } };
+        };
+        const upgradeGroup = (id) => {
+          if (!requireWrite()) return;
+          const result = groupUpdateResults.value[id];
+          if (!result?.plan_id) return showToast('请先重新检查套件', 'error');
+          const plans = result.plans || [];
+          activeChangelog.value = { title: '逐 skill 更新预览',
+            data: { ...result.diff_summary, patch: plans.map(p => p.name + '\n' + p.diff_summary.patch).join('\n\n'),
+                    truncated: plans.some(p => p.diff_summary.truncated) },
+            approve: async () => { activeChangelog.value = null; await applyUpgradeGroup(id, result.plan_id); } };
         };
 
         const discardChanges = () => {
@@ -1209,7 +1335,8 @@
         };
 
         const submitBatchSave = async () => {
-          if (changeCount.value === 0) return;
+          if (!requireWrite() || changeCount.value === 0) return;
+          if (!window.confirm('确认修改以下启用范围并逐项提交？\n' + Object.entries(modifiedAgents.value).map(([name, agents]) => name + ': ' + agents.join('、')).join('\n'))) return;
           saving.value = true;
           try {
             const agentKeyMap = {
@@ -1240,7 +1367,8 @@
               commitMsg.value = '';
               await fetchData();
             } else {
-              showToast('保存失败：' + (data.error || '未知错误'), 'error');
+              showToast('保存停止：' + (data.error || '未知错误') + '；已完成：' + (data.completed || []).join('、'), 'error');
+              await fetchData();
             }
           } catch (e) {
             showToast('保存异常：' + e.message, 'error');
@@ -1250,6 +1378,7 @@
         };
 
         const pushGit = async () => {
+          if (!requireWrite() || !window.confirm('确认将 main 上所有未备份提交推送到已登记私有仓库？这不会标记版本稳定。')) return;
           pushingGit.value = true;
           try {
             const res = await fetch('/api/git-push', { method: 'POST' });
@@ -1273,6 +1402,7 @@
         });
 
         return {
+          canWrite,
           skills,
           groups,
           audit,
@@ -1308,6 +1438,7 @@
           setTheme,
           getWorkingAgents,
           hasChanges,
+          getAgentPillState,
           isSelected,
           toggleSkillAgent,
           batchAddAgent,

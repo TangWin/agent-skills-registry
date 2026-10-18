@@ -5,7 +5,7 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 
 # Skill Manager
 
-以 `/Users/tangw/.agents/skills` 为唯一维护目录，以同目录的 `SKILLS.md` 为唯一人工清单。私有备份远端为 `git@github.com:TangWin/agent-skills-registry.git`。不得启动服务或创建定时任务。
+以 `/Users/tangw/.agents/skills` 为唯一维护目录，以同目录的 `SKILLS.md` 为唯一人工清单。私有备份远端为 `git@github.com:TangWin/agent-skills-registry.git`。默认不启动服务；仅在用户明确要求打开 Web 控制台时启动，任务结束后关闭。不得创建定时任务。
 
 ## 边界
 
@@ -25,7 +25,8 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 ## Git 版本与远端备份
 
 - `main` 保存当前已纳管内容；一个 skill 的安装、更新或回退必须使用一个独立提交，禁止把多个 skill 混入同一版本提交。
-- 执行更新前，要求目标 skill 无本地未提交改动，并将当前已提交的稳定基线推送到 `origin/main`；推送失败时停止更新。
+- 执行写操作前要求整个工作区和暂存区干净，拒绝夹带任何未提交改动。更新前通过远端实际引用确认当前基线已备份到 `origin/main`；不自动推送，未备份时停止并展示所需操作。
+- 推送表示备份，稳定标签表示用户试用认可。`main` 可以包含候选提交；不得把“已备份”表述为“已稳定”。套件更新从同一个已备份基线开始，逐 skill 验证和独立提交，失败停止并报告已完成项。
 - 更新完成并验证后创建候选提交，但不自动标记稳定。用户确认试用通过后，创建 `stable/<skill>/<version>` 标签并推送提交和标签。
 - 推送前检查暂存文件和敏感信息；存在未确认文件、未登记目录或疑似凭据时停止。
 - 远端是本地管理仓库的私有备份，不替代各 skill 在 `SKILLS.md` 中登记的上游来源。
@@ -39,15 +40,29 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 python3 /Users/tangw/.agents/skills/skill-manager/scripts/audit_skills.py
 ```
 
-或启动 Web 可视化管理控制台：
+用户明确要求 Web 控制台时，默认以只读模式启动：
 
 ```bash
 python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py
 ```
 
+仅在用户已授权写操作时添加 `--allow-write`。控制台绑定 `127.0.0.1`，使用会话令牌、Host/Origin 检查；前端依赖固定保存在 `assets/vendor`，不加载 CDN 脚本。每次写入仍须展示并确认具体差异，启动写入模式不等于确认所有更新。
+
+命令行检查单个 skill（只读；会联网下载到临时目录）：
+
+```bash
+python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check <skill>
+```
+
+
 按以下状态报告：
 
-- `linked`：正确指向唯一维护目录。
+- `invalid-manifest`：清单缺列、坏行、重复名称、未知 Agent、路径越界或锁定记录损坏。
+- `invalid-skill`：受管目录缺少可读取的 `SKILL.md`。
+- `duplicate-name`：通用目录或 scoped 目录出现重名。
+- `content-drift`：实际内容与安装时锁定摘要不同。
+- `metadata-drift`：外部自管应用版本与清单登记不同，只报告，不自动改写来源信息。
+- `linked`：正确指向唯一维护目录；不代表版本已验证或已稳定。
 - `missing-link`：清单声明适用，但目标 Agent 缺少软链接。
 - `wrong-target`：软链接存在，但没有指向唯一维护目录，包含指向 CC Switch 的链接。
 - `unexpected-link`：清单未声明适用，但目标 Agent 存在该链接。
@@ -77,19 +92,19 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py
 
 1. 读取 `SKILLS.md`，只处理有明确远端来源和版本依据的行。
 2. 查询远端 tag、release 或 commit；对 monorepo 同时检查登记的子目录。
-3. 比较当前内容、登记版本和远端版本，禁止仅凭发布时间判断。
-4. 输出 `有更新`、`已是最新`、`无法自动判断`、`来源失效` 四类结果，并列出远端变更中的脚本、hooks、权限和依赖变化。
+3. 解析登记 commit 并验证本地内容；比较固定完整 commit 下该子目录的内容与可执行位，禁止仅比较短 SHA、仓库 HEAD 或发布时间。登记基线无法解析、本地定制、来源不明或网络失败时报告“无法自动判断”，不得捏造更新摘要。
+4. 输出内容变化或无变化；不能验证时显示“无法自动判断”及真实原因，只有证据明确时才判定来源失效。展示真实 patch、文件清单、脚本、hooks、权限和依赖变化。Web 预览绑定完整 commit、内容摘要和清单摘要，15 分钟有效且只能使用一次。
 5. 只报告，不下载覆盖、不修改检查日期。用户明确选择某个 skill 更新后，才进入更新流程。
 
 ## 更新
 
-1. 更新前检查 Git 工作区和目标 skill 内容；存在未提交改动或与登记校验不一致时停止。
-2. 确认当前稳定基线已经提交并推送到 `origin/main`，未推送成功不得覆盖本地 skill。
-3. 将新版本下载到临时目录，完成与安装相同的安全检查并展示差异。
-4. 等待用户明确确认具体版本。
-5. 只替换该 skill，保留其他目录和软链接；验证失败则恢复旧内容。
-6. 验证成功后更新 `SKILLS.md`，为该 skill 创建独立候选提交。
-7. 用户确认试用通过后，创建 `stable/<skill>/<version>` 标签并推送提交和标签。
+1. 运行严格清单与目录审计，检查整个工作区、暂存区、main 分支和远端备份。保留来源不明、本地定制及外部安装器管理的内容，禁止自动覆盖。
+2. 在临时目录检出完整 commit，校验 SKILL.md、非常规文件、软链接、明显敏感文件和可疑凭据；不执行上游脚本。敏感检查仅为基础检查，不替代人工审阅。
+3. 向用户展示固定版本的实际差异，确认后使用同一 commit 下载；下载完成再次检查基线和内容摘要。差异过大被截断时禁止自动更新。
+4. `skill_ops.py` 持有进程锁，将旧目录、清单、锁定记录保存在 Git 元数据目录的事务备份中，再替换目标。使用清单真实路径，支持 `.scoped`；禁止覆盖外部自管链接。
+5. 验证后只暂存目标目录、该项清单修改与 `.skill-locks/<skill>.json`，创建独立候选提交；不运行仓库 hooks、不自动推送或标记稳定。异常恢复旧目录、清单、锁定记录和暂存区。
+6. 异常退出留下事务时禁止继续写操作。先检查并执行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py recover`；HEAD 出现不相关变化时保留备份并停止自动恢复。
+7. Agent 启用范围变更也必须先整批预检再逐项提交；布局无法满足 Codex/Grok 直读约束时拒绝写入，迁移 `.scoped` 另行展示路径与差异并确认。适用 Agent 是兼容性声明与实际启用范围的共同约束，不能通过取消一个复选框伪装停止直读。
 
 ## 标记稳定与回退
 
@@ -97,12 +112,12 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py
 
 1. 确认候选提交只包含目标 skill 与其 `SKILLS.md` 登记变化。
 2. 创建唯一标签 `stable/<skill>/<version>`；标签已存在时禁止移动或覆盖。
-3. 推送 `main` 和该标签。
+3. 经敏感信息与范围检查后推送 `main` 和该标签。锁定文件记录安装时的候选快照，不手工修改状态；界面仅在稳定标签中的锁定记录与当前记录完全相同时显示“已稳定”。
 
 用户要求回退某个 skill 时：
 
 1. 展示该 skill 可用的稳定标签、对应上游版本和提交时间，等待用户指定目标。
-2. 从选定标签只恢复 `<skill>/` 目录，不整体恢复旧版 `SKILLS.md`。
+2. 从选定标签按该 skill 的真实路径（含 `.scoped`）恢复目录及其 `.skill-locks/<skill>.json`；旧标签没有锁定记录则移除该项记录并明确标为未锁定。不整体恢复旧版 `SKILLS.md`。
 3. 只修改 `SKILLS.md` 中该 skill 的版本、状态和检查信息。
 4. 重新验证 skill、软链接和脚本；失败则恢复回退前内容。
 5. 创建独立的回退提交，保留候选版本和回退操作的完整历史；用户确认后推送。
@@ -116,3 +131,10 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py
 - 内容冲突和未纳管项写入“待确认纳管”区，不混入主表。
 - 安装或更新必须在同一操作中同步修改清单。
 - 不因格式统一而改写其他 skill 的内容。
+
+## 锁定记录与验证
+
+- `SKILLS.md` 保持唯一人工清单；`.skill-locks/<skill>.json` 是更新成功时生成的机器记录，包括来源、子目录、完整 commit、内容摘要、管理方式和安装时间，不手工维护第二份来源。
+- 既有 skill 没有锁定记录时显示“未锁定”，不能伪造已验证或稳定基线。外部安装器自管链接显示“外部自管”，不纳入自动更新。
+- 本机路径健康、内容一致、上游版本一致、试用稳定是不同状态，不能用单一绿色状态替代。
+- 回归测试：`python3 -B -m unittest discover -s /Users/tangw/.agents/skills/skill-manager/tests -v`。测试仅使用临时仓库和本地裸仓库，模拟网络，不触及用户 skills、真实远端和监听端口。界面静态检查：`node /Users/tangw/.agents/skills/skill-manager/tests/check_ui.cjs`，验证内联脚本语法与 Vue 模板编译，不代替真实浏览器试用。
