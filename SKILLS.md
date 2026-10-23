@@ -54,6 +54,7 @@
 | to-tickets | `~/.agents/skills/to-tickets` | [mattpocock/skills](https://github.com/mattpocock/skills) | 将方案拆成带依赖关系的 tickets | `3cca18b` | 仓库子目录 `skills/engineering/to-tickets`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok | 2026-09-05 |
 | web-access | `~/.agents/skills/web-access` | [eze-is/web-access](https://github.com/eze-is/web-access) | 统一处理联网搜索、抓取和浏览器操作 | `2.5.4 / 33eef84` | 仓库根目录 skill；检查 release、脚本和浏览器权限变化 | Codex、Claude Code、Cursor、Grok | 2026-08-22 |
 | inl-coach | `~/.agents/skills/inl-coach` | 本地自建（本次会话） | 用 INL 续接知识库事项、调用资料并同步确认状态 | `0.3.1 / SKILL SHA256 be7e4fbfa0ce` | 安装已审查的0.3.1包；仅Markdown与references；本地维护，无远端自动更新；未锁定候选 | Codex、Claude Code、Cursor、Grok | 2026-10-23（仅本地安装校验） |
+| if-then-planning | `~/.agents/skills/if-then-planning` | 本地自建（本次会话） | 制定和复盘 If–Then 计划，按执行证据调整行动 | `0.3.1 / SKILL SHA256 8927e0001cca` | 安装已审查的0.3.1包；仅Markdown与references；本地维护，无远端自动更新；未锁定候选 | Codex、Claude Code、Cursor、Grok | 2026-10-23（仅本地安装校验） |
 
 ## 待确认纳管
 
