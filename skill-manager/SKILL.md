@@ -5,7 +5,7 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 
 # Skill Manager
 
-以 `/Users/tangw/.agents/skills` 为唯一维护目录，以同目录的 `SKILLS.md` 为唯一人工清单。私有备份远端为 `git@github.com:TangWin/agent-skills-registry.git`。默认不启动服务；仅在用户明确要求打开 Web 控制台时启动，任务结束后关闭。不得创建定时任务。
+以 `/Users/tangw/.agents/skills` 为唯一维护目录，以同目录的 `SKILLS.md` 为唯一人工清单。私有备份远端为 `git@github.com:TangWin/agent-skills-registry.git`。默认不启动服务；仅在用户明确要求启动服务或打开 Web 控制台时启动。为临时操作启动的服务，在该操作结束后关闭；用户主动要求启动并使用控制台时，交付访问地址后保持运行，待用户明确表示用完或要求关闭时再停止。不得创建定时任务。
 
 ## 边界
 
@@ -31,6 +31,12 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 - 推送前检查暂存文件和敏感信息；存在未确认文件、未登记目录或疑似凭据时停止。
 - 远端是本地管理仓库的私有备份，不替代各 skill 在 `SKILLS.md` 中登记的上游来源。
 - 禁止使用 `git reset --hard` 回退，禁止强制推送。
+
+## 功能入口
+
+- 命令行：`audit_skills.py` 只读审计；`skill_ops.py check <skill>` 检查更新；`skill_ops.py recover` 恢复更新或启用范围变更留下的事务。
+- Web 控制台：检查更新；开启写入模式后，可确认更新、修改 Agent 启用范围和推送备份。更新及启用范围变更使用脚本事务保护。
+- 安装、登记、迁移、标记稳定和回退：由 Agent 按下文流程执行，目前没有对应的完整 CLI/Web 事务入口。执行前明确路径与差异，准备可恢复备份，不得假定 `recover` 能恢复这些手工操作。
 
 ## 首次盘点或审计
 
@@ -102,9 +108,9 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check <sk
 2. 在临时目录检出完整 commit，校验 SKILL.md、非常规文件、软链接、明显敏感文件和可疑凭据；不执行上游脚本。敏感检查仅为基础检查，不替代人工审阅。
 3. 向用户展示固定版本的实际差异，确认后使用同一 commit 下载；下载完成再次检查基线和内容摘要。差异过大被截断时禁止自动更新。
 4. `skill_ops.py` 持有进程锁，将旧目录、清单、锁定记录保存在 Git 元数据目录的事务备份中，再替换目标。使用清单真实路径，支持 `.scoped`；禁止覆盖外部自管链接。
-5. 验证后只暂存目标目录、该项清单修改与 `.skill-locks/<skill>.json`，创建独立候选提交；不运行仓库 hooks、不自动推送或标记稳定。异常恢复旧目录、清单、锁定记录和暂存区。
+5. 验证后只暂存目标目录、该项清单修改与 `.skill-locks/<skill>.json`；目标文件即使命中忽略规则也必须纳入提交。从暂存区还原目标目录并核对内容及可执行位摘要与确认版本一致，再创建独立候选提交；不运行仓库 hooks、不自动推送或标记稳定。异常恢复旧目录、清单、锁定记录和暂存区。
 6. 异常退出留下事务时禁止继续写操作。先检查并执行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py recover`；HEAD 出现不相关变化时保留备份并停止自动恢复。
-7. Agent 启用范围变更也必须先整批预检再逐项提交；布局无法满足 Codex/Grok 直读约束时拒绝写入，迁移 `.scoped` 另行展示路径与差异并确认。适用 Agent 是兼容性声明与实际启用范围的共同约束，不能通过取消一个复选框伪装停止直读。
+7. Agent 启用范围变更也必须先整批预检再逐项提交；写入前持久化旧清单、旧链接及预期链接状态，中断后通过 `recover` 恢复。恢复时发现链接被其他操作改动则保留事务并停止，禁止覆盖；布局无法满足 Codex/Grok 直读约束时拒绝写入，迁移 `.scoped` 另行展示路径与差异并确认。适用 Agent 是兼容性声明与实际启用范围的共同约束，不能通过取消一个复选框伪装停止直读。
 
 ## 标记稳定与回退
 
@@ -137,4 +143,5 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check <sk
 - `SKILLS.md` 保持唯一人工清单；`.skill-locks/<skill>.json` 是更新成功时生成的机器记录，包括来源、子目录、完整 commit、内容摘要、管理方式和安装时间，不手工维护第二份来源。
 - 既有 skill 没有锁定记录时显示“未锁定”，不能伪造已验证或稳定基线。外部安装器自管链接显示“外部自管”，不纳入自动更新。
 - 本机路径健康、内容一致、上游版本一致、试用稳定是不同状态，不能用单一绿色状态替代。
+- 更新验收须覆盖忽略规则下的文件完整提交、从候选提交恢复后摘要一致，以及启用范围变更在中断后恢复清单和链接；普通异常回滚测试不能代替崩溃恢复测试。
 - 回归测试：`python3 -B -m unittest discover -s /Users/tangw/.agents/skills/skill-manager/tests -v`。测试仅使用临时仓库和本地裸仓库，模拟网络，不触及用户 skills、真实远端和监听端口。界面静态检查：`node /Users/tangw/.agents/skills/skill-manager/tests/check_ui.cjs`，验证内联脚本语法与 Vue 模板编译，不代替真实浏览器试用。

@@ -142,6 +142,36 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(ops.git(self.root, "status", "--porcelain"), "")
         self.assertEqual(ops.git(self.root, "ls-remote", "origin", "refs/heads/main").split()[0], self.head)
 
+    def test_ignored_upstream_file_survives_candidate_checkout(self):
+        source = self.upstream / "skills/alpha"
+        (source / ".gitignore").write_text("helper.py\n")
+        helper = source / "helper.py"
+        helper.write_text("print('fixture')\n")
+        helper.chmod(0o755)
+        ops.git(self.upstream, "add", ".")
+        ops.git(self.upstream, "add", "-f", "skills/alpha/helper.py")
+        ops.git(self.upstream, "commit", "-m", "tracked ignored helper")
+        plan = ops.prepare(self.root, "alpha")
+        ops.apply(self.root, plan)
+        restored = self.base / "restored"
+        ops.git(self.base, "clone", "--local", str(self.root), str(restored))
+        self.assertEqual((restored / "alpha/helper.py").read_bytes(), helper.read_bytes())
+        self.assertTrue((restored / "alpha/helper.py").stat().st_mode & 0o111)
+        self.assertEqual(audit.folder_hash(restored / "alpha"), plan["target_hash"])
+
+    def test_incomplete_index_rejects_update_and_restores_original(self):
+        self.upstream_change()
+        plan = ops.prepare(self.root, "alpha")
+        real_git = ops.git
+        def skip_add(root, *args):
+            if args[0] == "add":
+                return ""
+            return real_git(root, *args)
+        with patch.object(ops, "git", side_effect=skip_add):
+            with self.assertRaisesRegex(ValueError, "暂存快照"):
+                ops.apply(self.root, plan)
+        self.assert_original()
+
     def test_copy_failure_preserves_original(self):
         self.upstream_change()
         plan = ops.prepare(self.root, "alpha")
@@ -293,6 +323,68 @@ class RegistryTest(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertFalse((link_root / "alpha").is_symlink())
         self.assert_original()
+
+    def test_agent_keyboard_interrupt_restores_manifest_and_links(self):
+        link_root = self.base / "claude"
+        with patch.object(audit, "LINK_ROOTS", {"claude-code": link_root}), patch.object(ops, "commit_paths", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                ops.change_agents(self.root, [{"name": "alpha", "agents": ["Codex", "Grok", "Claude Code"]}])
+        self.assertFalse((link_root / "alpha").is_symlink())
+        self.assert_original()
+
+    def test_agent_crash_recovers_added_and_removed_links(self):
+        claude = self.base / "claude"
+        cursor = self.base / "cursor"
+        links = {"claude-code": claude, "cursor": cursor}
+        with patch.object(audit, "LINK_ROOTS", links):
+            ops.change_agents(self.root, [{"name": "alpha", "agents": ["Codex", "Grok", "Claude Code"]}])
+            old_manifest = self.manifest.read_bytes()
+            old_link = (claude / "alpha").readlink()
+            head = ops.git(self.root, "rev-parse", "HEAD")
+            with patch.object(ops, "commit_paths", side_effect=KeyboardInterrupt), patch.object(ops, "restore_transaction", side_effect=SystemExit("crash")):
+                with self.assertRaises(SystemExit):
+                    ops.change_agents(self.root, [{"name": "alpha", "agents": ["Codex", "Grok", "Cursor"]}])
+            self.assertFalse((claude / "alpha").is_symlink())
+            self.assertTrue((cursor / "alpha").is_symlink())
+            with self.assertRaisesRegex(ValueError, "未完成事务"):
+                ops.preflight(self.root)
+            ops.restore_transaction(self.root)
+            self.assertEqual(self.manifest.read_bytes(), old_manifest)
+            self.assertEqual((claude / "alpha").readlink(), old_link)
+            self.assertFalse((cursor / "alpha").is_symlink())
+            self.assertEqual(ops.git(self.root, "rev-parse", "HEAD"), head)
+            self.assertEqual(ops.git(self.root, "status", "--porcelain"), "")
+
+    def test_agent_recovery_preserves_later_link_changes(self):
+        link_root = self.base / "claude"
+        with patch.object(audit, "LINK_ROOTS", {"claude-code": link_root}), patch.object(ops, "commit_paths", side_effect=KeyboardInterrupt), patch.object(ops, "restore_transaction", side_effect=SystemExit("crash")):
+            with self.assertRaises(SystemExit):
+                ops.change_agents(self.root, [{"name": "alpha", "agents": ["Codex", "Grok", "Claude Code"]}])
+        link = link_root / "alpha"
+        link.unlink()
+        link.symlink_to(self.root / "beta")
+        with self.assertRaisesRegex(ValueError, "链接已变化"):
+            ops.restore_transaction(self.root)
+        self.assertEqual(link.resolve(), self.root / "beta")
+        self.assertTrue((ops.git_dir(self.root) / "skill-manager-transaction").exists())
+
+    def test_agent_recovery_after_commit_preserves_new_links(self):
+        link_root = self.base / "claude"
+        transaction = ops.git_dir(self.root) / "skill-manager-transaction"
+        real_remove = shutil.rmtree
+        def stop_cleanup(path, *args, **kwargs):
+            if Path(path) == transaction:
+                raise OSError("cleanup crash")
+            return real_remove(path, *args, **kwargs)
+        with patch.object(audit, "LINK_ROOTS", {"claude-code": link_root}), patch.object(ops.shutil, "rmtree", side_effect=stop_cleanup):
+            with self.assertRaises(OSError):
+                ops.change_agents(self.root, [{"name": "alpha", "agents": ["Codex", "Grok", "Claude Code"]}])
+        head = ops.git(self.root, "rev-parse", "HEAD")
+        ops.restore_transaction(self.root)
+        self.assertNotEqual(head, self.head)
+        self.assertEqual(ops.git(self.root, "rev-parse", "HEAD"), head)
+        self.assertEqual((link_root / "alpha").resolve(), self.root / "alpha")
+        self.assertEqual(ops.git(self.root, "status", "--porcelain"), "")
 
     def test_lock_prevents_second_writer(self):
         with ops.exclusive(self.root):

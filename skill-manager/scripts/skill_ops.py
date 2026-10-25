@@ -275,8 +275,21 @@ def assert_target_audit(name: str) -> None:
         raise ValueError("变更后审计未通过：" + ", ".join(f["status"] for f in errors))
 
 
-def commit_paths(root: Path, paths: list[str], message: str) -> None:
+def commit_paths(root: Path, paths: list[str], message: str,
+                 snapshot: tuple[str, str] | None = None) -> None:
     git(root, "add", "--", *paths)
+    if snapshot is not None:
+        relative, expected_hash = snapshot
+        target = root / relative
+        # 新复制的上游文件可能命中忽略规则；仅强制暂存已经验证的目标文件。
+        files = [str(p.relative_to(root)) for p in sorted(target.rglob("*"))
+                 if p.is_file() and not any(part in audit.IGNORED_PARTS for part in p.relative_to(target).parts)]
+        git(root, "add", "-f", "--", *files)
+        staged_files = git(root, "ls-files", "-z", "--", relative).split("\0")
+        with tempfile.TemporaryDirectory(prefix="skill-index-") as temp:
+            git(root, "checkout-index", f"--prefix={temp}/", "--", *filter(None, staged_files))
+            if audit.folder_hash(Path(temp) / relative) != expected_hash:
+                raise ValueError("暂存快照与已确认的目标摘要不一致，拒绝提交")
     staged = git(root, "diff", "--cached", "--name-only").splitlines()
     if any(not any(p == allowed or p.startswith(allowed.rstrip("/") + "/") for allowed in paths) for p in staged):
         raise ValueError("暂存区存在本次操作之外的文件")
@@ -302,6 +315,26 @@ def restore_transaction(root: Path) -> None:
             shutil.rmtree(transaction)
             return
         raise ValueError("事务后 HEAD 已变化，拒绝自动恢复，请保留事务目录人工检查")
+    if state.get("kind") == "agents":
+        # 恢复前整批检查，避免覆盖崩溃后人工修复的链接或实体目录。
+        for item in state["links"]:
+            link = Path(item["path"])
+            current = os.readlink(link) if link.is_symlink() else None
+            if (link.exists() and not link.is_symlink()) or current not in (item["previous"], item["desired"]):
+                raise ValueError(f"事务后链接已变化，保留备份供人工检查：{link}")
+        for item in state["links"]:
+            link = Path(item["path"])
+            previous = item["previous"]
+            if link.is_symlink():
+                if os.readlink(link) == previous:
+                    continue
+                link.unlink()
+            if previous is not None:
+                link.symlink_to(previous)
+        atomic_write(root / "SKILLS.md", (transaction / "manifest").read_bytes())
+        git(root, "reset", "--quiet", state["head"], "--", "SKILLS.md")
+        shutil.rmtree(transaction)
+        return
     target = root / state["target"]
     backup = transaction / "old"
     if backup.exists():
@@ -359,7 +392,8 @@ def apply(root: Path, plan: dict[str, Any], *, _locked: bool = False, _backup_he
                 rewrite_row(root, plan["name"], {"当前版本、commit 或锁定哈希": f"`{commit}`",
                             "最后检查": datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()})
                 assert_target_audit(plan["name"])
-                commit_paths(root, [relative, "SKILLS.md", lock_rel], message)
+                commit_paths(root, [relative, "SKILLS.md", lock_rel], message,
+                             snapshot=(relative, plan["target_hash"]))
             except BaseException:
                 if (transaction / "state.json").exists():
                     restore_transaction(root)
@@ -426,9 +460,17 @@ def change_agents(root: Path, updates: list[dict[str, Any]]) -> dict[str, Any]:
             prepared.append((name, agents, target, changes))
         completed = []
         for name, agents, target, changes in prepared:
-            old_manifest = (root / "SKILLS.md").read_bytes()
             head = git(root, "rev-parse", "HEAD")
+            transaction = git_dir(root) / "skill-manager-transaction"
+            transaction.mkdir()
+            message = f"config: {name} applicable agents"
+            state = {"kind": "agents", "head": head, "message": message,
+                     "links": [{"path": str(link), "previous": previous,
+                                "desired": (previous or os.path.relpath(target, link.parent)) if expected else None}
+                               for link, expected, previous in changes]}
             try:
+                shutil.copyfile(root / "SKILLS.md", transaction / "manifest")
+                atomic_write(transaction / "state.json", json.dumps(state).encode())
                 rewrite_row(root, name, {"适用 Agent": "、".join(agents)})
                 for link, expected, previous in changes:
                     if expected and previous is None:
@@ -437,18 +479,17 @@ def change_agents(root: Path, updates: list[dict[str, Any]]) -> dict[str, Any]:
                     elif not expected and previous is not None:
                         link.unlink()
                 assert_target_audit(name)
-                commit_paths(root, ["SKILLS.md"], f"config: {name} applicable agents")
+                commit_paths(root, ["SKILLS.md"], message)
                 completed.append(name)
-            except Exception as exc:
-                if git(root, "rev-parse", "HEAD") == head:
-                    atomic_write(root / "SKILLS.md", old_manifest)
-                    for link, expected, previous in changes:
-                        if link.is_symlink():
-                            link.unlink()
-                        if previous is not None:
-                            link.symlink_to(previous)
-                    git(root, "reset", "--quiet", head, "--", "SKILLS.md")
+            except BaseException as exc:
+                if (transaction / "state.json").exists():
+                    restore_transaction(root)
+                else:
+                    shutil.rmtree(transaction)
+                if not isinstance(exc, Exception):
+                    raise
                 return {"ok": False, "error": str(exc), "completed": completed}
+            shutil.rmtree(transaction)
         return {"ok": True, "updated_count": len(completed), "completed": completed, "audit": audit.inspect()}
 
 
