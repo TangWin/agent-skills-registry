@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skills Manager - 本地 Agent 技能控制台</title>
   
-  <!-- Favicon (SVG 拼图徽标) -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%235e6ad2'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='56'>🧩</text></svg>">
+  <!-- Favicon (SVG 极客微晶徽标) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='28' fill='%23080b11'/><rect x='10' y='10' width='80' height='80' rx='20' fill='%236366f1' fill-opacity='0.2' stroke='%2306b6d4' stroke-width='3'/><circle cx='50' cy='50' r='18' fill='%2306b6d4'/><path d='M50 22v10M50 68v10M22 50h10M68 50h10' stroke='%2306b6d4' stroke-width='4' stroke-linecap='round'/></svg>">
   
   <!-- 固定本地依赖；写入会话不加载第三方脚本。 -->
   <script>window.SKILL_SESSION = __SKILL_SESSION__;</script>
@@ -19,9 +19,18 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', '"SF Mono"', 'Menlo', 'monospace'],
           },
+          colors: {
+            cyber: {
+              cyan: '#06b6d4',
+              indigo: '#6366f1',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              rose: '#f43f5e',
+            }
+          }
         }
       }
     }
@@ -29,45 +38,96 @@
 
   <style>
     :root {
-      --bg-page: #f8f9fb;
-      --bg-surface: #ffffff;
-      --bg-surface-elevated: #f1f3f7;
-      --bg-surface-hover: #f3f5f9;
+      --bg-page: #f8fafc;
+      --bg-surface: rgba(255, 255, 255, 0.88);
+      --bg-surface-elevated: #f1f5f9;
+      --bg-surface-hover: rgba(241, 245, 249, 0.8);
       --text-primary: #0f172a;
       --text-secondary: #475569;
-      --text-muted: #8a96a8;
-      --border-subtle: rgba(0, 0, 0, 0.07);
-      --border-strong: rgba(0, 0, 0, 0.12);
-      --accent-brand: #5e6ad2;
-      --accent-hover: #4b55c4;
-      --accent-tint: rgba(94, 106, 210, 0.08);
-      --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --text-muted: #94a3b8;
+      --border-subtle: rgba(226, 232, 240, 0.85);
+      --border-strong: rgba(203, 213, 225, 0.95);
+      --accent-cyan: #0891b2;
+      --accent-indigo: #4f46e5;
+      --accent-brand: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-tint: rgba(99, 102, 241, 0.08);
+      --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+      --specular-line: rgba(255, 255, 255, 0.8);
+      --grid-line: rgba(0, 0, 0, 0.025);
     }
 
     html.dark {
-      --bg-page: #08090a;
-      --bg-surface: #0f1011;
-      --bg-surface-elevated: #16181a;
-      --bg-surface-hover: rgba(255, 255, 255, 0.04);
-      --text-primary: #f7f8f8;
-      --text-secondary: #d0d6e0;
-      --text-muted: #8a8f98;
-      --border-subtle: rgba(255, 255, 255, 0.06);
-      --border-strong: rgba(255, 255, 255, 0.12);
-      --accent-brand: #5e6ad2;
-      --accent-hover: #7170ff;
-      --accent-tint: rgba(94, 106, 210, 0.15);
-      --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.4);
+      --bg-page: #080b11;
+      --bg-surface: rgba(13, 18, 30, 0.72);
+      --bg-surface-elevated: rgba(22, 30, 49, 0.75);
+      --bg-surface-hover: rgba(30, 41, 67, 0.6);
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --border-subtle: rgba(148, 163, 184, 0.12);
+      --border-strong: rgba(148, 163, 184, 0.22);
+      --accent-cyan: #06b6d4;
+      --accent-indigo: #818cf8;
+      --accent-brand: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-tint: rgba(99, 102, 241, 0.14);
+      --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 36px -8px rgba(0, 0, 0, 0.7);
+      --specular-line: rgba(255, 255, 255, 0.12);
+      --grid-line: rgba(255, 255, 255, 0.02);
     }
 
     body {
       background-color: var(--bg-page);
       color: var(--text-primary);
-      font-feature-settings: "cv01", "ss03";
-      letter-spacing: -0.011em;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      letter-spacing: -0.012em;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      min-height: 100vh;
+      position: relative;
     }
 
+    /* 极客微晶环境背景网格与光晕 */
+    .cyber-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: 
+        radial-gradient(circle at 50% -10%, rgba(99, 102, 241, 0.15), transparent 45%),
+        radial-gradient(circle at 90% 15%, rgba(6, 182, 212, 0.08), transparent 40%),
+        radial-gradient(circle at 10% 85%, rgba(99, 102, 241, 0.06), transparent 35%),
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+    }
+
+    /* 科技面板毛玻璃质感 */
+    .cyber-glass {
+      background: var(--bg-surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--card-shadow);
+      position: relative;
+    }
+
+    /* 精工微晶顶高光线 */
+    .specular-top {
+      position: relative;
+    }
+    .specular-top::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 8%;
+      right: 8%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--specular-line), transparent);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* 滚动条精密微雕 */
     .custom-scrollbar::-webkit-scrollbar {
       width: 5px;
       height: 5px;
@@ -80,200 +140,221 @@
       background-color: transparent;
     }
 
+    /* Agent 科技药丸胶囊微交互 */
     .agent-pill {
-      font-feature-settings: normal;
-      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      font-feature-settings: "tnum";
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
     }
-    
+
     html.dark .agent-pill.active {
-      background: rgba(94, 106, 210, 0.25);
-      color: #bfdbfe;
-      border-color: rgba(94, 106, 210, 0.6);
-      box-shadow: 0 0 8px rgba(94, 106, 210, 0.2);
+      background: rgba(6, 182, 212, 0.12);
+      color: #67e8f9;
+      border-color: rgba(6, 182, 212, 0.45);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     }
     html:not(.dark) .agent-pill.active {
-      background: #5e6ad2;
-      color: #ffffff;
-      border-color: #4b55c4;
-      box-shadow: 0 1px 4px rgba(94, 106, 210, 0.3);
+      background: rgba(8, 145, 178, 0.1);
+      color: #0e7490;
+      border-color: rgba(8, 145, 178, 0.35);
+      font-weight: 600;
     }
 
     html.dark .agent-pill.warning {
-      background: rgba(245, 158, 11, 0.18);
+      background: rgba(245, 158, 11, 0.14);
       color: #fbbf24;
-      border-color: rgba(245, 158, 11, 0.55);
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
-    }
-    html.dark .agent-pill.warning:hover {
-      background: rgba(245, 158, 11, 0.28);
-      border-color: rgba(245, 158, 11, 0.7);
+      border-color: rgba(245, 158, 11, 0.5);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
     }
     html:not(.dark) .agent-pill.warning {
       background: #fef3c7;
       color: #b45309;
       border-color: #f59e0b;
-      box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
-    }
-    html:not(.dark) .agent-pill.warning:hover {
-      background: #fde68a;
-      border-color: #d97706;
     }
 
     html.dark .agent-pill.inactive {
       background: rgba(255, 255, 255, 0.02);
-      color: #62666d;
-      border-color: rgba(255, 255, 255, 0.06);
+      color: #475569;
+      border-color: rgba(255, 255, 255, 0.05);
     }
     html.dark .agent-pill.inactive:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #d0d6e0;
-      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+      border-color: rgba(255, 255, 255, 0.15);
     }
-
     html:not(.dark) .agent-pill.inactive {
-      background: #f1f3f7;
-      color: #8a96a8;
+      background: rgba(241, 245, 249, 0.8);
+      color: #94a3b8;
       border-color: #e2e8f0;
     }
     html:not(.dark) .agent-pill.inactive:hover {
-      background: #e9ecf2;
+      background: #e2e8f0;
       color: #334155;
-      border-color: #cbd5e1;
     }
 
-    [v-cloak] { display: none; }
+    /* 脉冲辉光动画 */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.15); }
+    }
+    .pulse-glow {
+      animation: pulse-glow 2.5s infinite ease-in-out;
+    }
+
+    /* 极客终端代码块 */
+    .code-terminal {
+      background: #05070a;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    [v-cloak] { display: none !important; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased selection:bg-[#5e6ad2] selection:text-white">
-  <div id="app" class="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 sm:p-6 lg:p-8" v-cloak>
+<body class="selection:bg-cyan-500/20 selection:text-cyan-400">
+  <!-- 环境微晶背景 -->
+  <div class="cyber-bg"></div>
+
+  <div id="app" class="relative z-10 flex flex-col min-h-screen max-w-[1440px] w-full mx-auto p-4 sm:p-6 lg:p-8" v-cloak>
     
-    <!-- 顶部导航栏 -->
-    <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[var(--border-subtle)] gap-4">
+    <!-- 顶部高科技控制台导航栏 -->
+    <header class="cyber-glass specular-top rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       
-      <!-- 品牌与标题 -->
+      <!-- 品牌标识与控制台核心坐标 -->
       <div class="flex items-center gap-3.5">
-        <div class="w-10 h-10 rounded-xl bg-[var(--accent-tint)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--accent-brand)] font-bold text-xl shadow-sm">
-          🧩
+        <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/20 via-cyan-500/10 to-transparent border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.18)]">
+          <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+          </svg>
+          <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+            <span class="pulse-glow absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+          </span>
         </div>
         <div>
-          <div class="flex items-center gap-2.5">
-            <h1 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
-              Skills Manager
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-[var(--text-primary)] font-mono">
+              SKILLS<span class="text-cyan-400 font-normal">.HUB</span>
             </h1>
-            <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-[var(--accent-tint)] text-[var(--accent-brand)] border border-[var(--border-strong)]">
-              套件分组版
+            <span class="text-[9px] uppercase tracking-widest font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+              v2.5 PRECISION
+            </span>
+            <span v-if="!canWrite" class="text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+              READ-ONLY
             </span>
           </div>
-          <p class="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5 font-mono">
-            <span>维护目录:</span>
-            <span class="text-[var(--text-secondary)]">~/.agents/skills</span>
+          <p class="text-[11px] text-[var(--text-muted)] font-mono mt-0.5 flex items-center gap-2">
+            <span class="text-[var(--text-secondary)]">ROOT:</span>
+            <span class="px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)]">~/.agents/skills</span>
           </p>
         </div>
       </div>
 
-      <!-- 右侧：健康状态、Git 状态与主题切换 -->
+      <!-- 右侧：遥测指标 (Telemetry) 与快捷微动作 -->
       <div class="flex items-center gap-2.5 flex-wrap">
         
-        <!-- 审计健康徽章 -->
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs shadow-sm">
+        <!-- 审计健康探针 -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-xs font-mono">
           <span class="relative flex h-2 w-2">
             <span v-if="auditHealthy" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2" :class="auditHealthy ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2" :class="auditHealthy ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-amber-500 shadow-[0_0_8px_#f59e0b]'"></span>
           </span>
-          <span class="text-[var(--text-secondary)] font-medium">审计:</span>
-          <span class="font-mono font-semibold" :class="auditHealthy ? 'text-emerald-500 dark:text-emerald-400' : 'text-amber-500'">
-            {{ healthyCount }}/{{ skills.length }} 正常
+          <span class="text-[var(--text-muted)] text-[11px]">AUDIT:</span>
+          <span class="font-semibold" :class="auditHealthy ? 'text-emerald-400' : 'text-amber-400'">
+            {{ healthyCount }}/{{ skills.length }} OK
           </span>
         </div>
 
-        <!-- 一键修复软链接按钮 (当检测到有异常链接时显示) -->
+        <!-- 一键修复软链接按钮 (当有异常时高光呼吸提醒) -->
         <button 
           v-if="repairableCount > 0"
           @click="runRepair"
           :disabled="repairingLinks"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-sm transition animate-pulse"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-xs font-mono font-medium shadow-[0_0_12px_rgba(245,158,11,0.2)] transition active:scale-95"
           title="点击一键安全补齐漏链、清除死链与无效链接"
         >
           <span v-if="repairingLinks" class="animate-spin text-[10px]">⚙️</span>
           <span v-else>⚡️</span>
-          <span>修复软链接 ({{ repairableCount }})</span>
+          <span>REPAIR ({{ repairableCount }})</span>
         </button>
 
-        <!-- 一键快速检查全量更新按钮 -->
+        <!-- 一键快速全量更新嗅探 -->
         <button 
           @click="checkAllUpdates"
           :disabled="checkingAll"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold shadow-xs transition"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-mono font-medium shadow-[0_0_12px_rgba(6,182,212,0.15)] transition active:scale-95"
           title="并发嗅探所有已绑定上游仓库的最新 HEAD 版本"
         >
-          <svg class="w-3.5 h-3.5 text-[var(--accent-brand)]" :class="{'animate-spin': checkingAll}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5" :class="{'animate-spin': checkingAll}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
-          <span>{{ checkingAll ? '全站检查中...' : '⚡️ 检查全部更新' }}</span>
+          <span>{{ checkingAll ? 'SCANNING...' : '⚡️ 检查全部更新' }}</span>
         </button>
 
-        <!-- CLI 运行依赖健康度 -->
-        <div v-if="dependencies && Object.keys(dependencies).length" class="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)] shadow-sm">
-          <span class="text-[var(--text-secondary)]">CLI:</span>
-          <span v-for="(ok, dep) in dependencies" :key="dep" class="flex items-center gap-0.5" :class="ok ? 'text-emerald-400 font-medium' : 'text-rose-400 opacity-60'">
+        <!-- CLI 运行依赖徽章 -->
+        <div v-if="dependencies && Object.keys(dependencies).length" class="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[10px] font-mono text-[var(--text-muted)]">
+          <span>CLI:</span>
+          <span v-for="(ok, dep) in dependencies" :key="dep" class="flex items-center gap-0.5" :class="ok ? 'text-emerald-400' : 'text-rose-400 opacity-60'">
             {{ dep }}{{ ok ? '✓' : '✗' }}
           </span>
         </div>
 
-        <!-- 只读保护模式提示 -->
-        <div v-if="!canWrite" class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-medium" title="当前为只读保护模式">
-          <span>🛡️ 只读保护</span>
-        </div>
-
-        <!-- Git 远端同步 -->
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs shadow-sm">
-          <span class="text-[var(--text-muted)]">Git:</span>
-          <span class="font-mono text-[var(--text-primary)] font-medium">{{ gitStatus.branch || 'main' }}</span>
-          <span v-if="gitStatus.ahead" class="text-amber-500 font-medium px-1 rounded bg-amber-500/10">待推送</span>
+        <!-- Git 远端分支与推送 -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-xs font-mono">
+          <svg class="w-3 h-3 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <path d="M6 9v12"></path>
+            <path d="M18 9a9 9 0 0 0-9 9"></path>
+          </svg>
+          <span class="text-[var(--text-primary)] font-medium">{{ gitStatus.branch || 'main' }}</span>
+          <span v-if="gitStatus.ahead" class="text-amber-400 font-semibold text-[10px] px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30">
+            AHEAD
+          </span>
           <button 
             @click="pushGit" 
             :disabled="!canWrite || pushingGit || !gitStatus.ahead"
-            class="ml-1 px-2.5 py-0.5 text-xs rounded bg-[var(--accent-brand)] hover:bg-[var(--accent-hover)] text-white font-medium disabled:opacity-30 disabled:cursor-not-allowed transition"
+            class="ml-1 px-2 py-0.5 text-[11px] rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            {{ pushingGit ? '推送中...' : '推送到远端' }}
+            {{ pushingGit ? 'PUSHING' : 'PUSH' }}
           </button>
         </div>
 
-        <!-- 亮色 / 暗色 / 系统 主题切换器 -->
-        <div class="flex items-center bg-[var(--bg-surface)] p-1 rounded-lg border border-[var(--border-subtle)] text-xs">
+        <!-- 主题切换 Segmented Control -->
+        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] text-xs font-mono">
           <button 
             @click="setTheme('light')" 
-            :class="themeMode === 'light' ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] font-semibold shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'"
-            class="px-2 py-1 rounded transition"
+            :class="themeMode === 'light' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-2 py-1 rounded-lg transition"
             title="亮色模式"
           >
             ☀️
           </button>
           <button 
             @click="setTheme('dark')" 
-            :class="themeMode === 'dark' ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] font-semibold shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'"
-            class="px-2 py-1 rounded transition"
+            :class="themeMode === 'dark' ? 'bg-[var(--bg-surface)] text-cyan-400 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-2 py-1 rounded-lg transition"
             title="暗色模式"
           >
             🌙
           </button>
           <button 
             @click="setTheme('system')" 
-            :class="themeMode === 'system' ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] font-semibold shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'"
-            class="px-2 py-1 rounded transition text-[11px]"
+            :class="themeMode === 'system' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-2 py-1 rounded-lg transition text-[10px]"
             title="跟随系统"
           >
-            自动
+            AUTO
           </button>
         </div>
 
-        <!-- 全局刷新 -->
+        <!-- 全局重新扫描 -->
         <button 
           @click="fetchData" 
-          class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] transition"
-          title="重新扫描"
+          class="p-2 text-[var(--text-muted)] hover:text-cyan-400 rounded-xl bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] transition active:scale-95"
+          title="重新扫描全部数据"
         >
-          <svg class="w-3.5 h-3.5" :class="{'animate-spin': loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5" :class="{'animate-spin text-cyan-400': loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
         </button>
@@ -281,101 +362,108 @@
       </div>
     </header>
 
-    <!-- 过滤器、视图模式切换与全局批量操作 -->
-    <div class="mt-5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--border-subtle)] shadow-sm">
+    <!-- 过滤器、分面维度与批量操作控制中枢 (Control Deck) -->
+    <div class="mt-5 cyber-glass specular-top rounded-2xl p-3.5 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
       
-      <!-- 搜索 & Agent 过滤 -->
+      <!-- 搜索输入框与分段模式切换 -->
       <div class="flex items-center gap-3 flex-1 flex-wrap">
-        <div class="relative flex-1 min-w-[240px]">
+        
+        <!-- 磨砂发光搜索框 -->
+        <div class="relative flex-1 min-w-[260px]">
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="搜索技能名、功能意图、套件包名..." 
-            class="w-full bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-primary)] pl-9 pr-4 py-2 rounded-lg border border-[var(--border-subtle)] focus:outline-none focus:border-[var(--accent-brand)] transition font-sans"
+            placeholder="搜索技能名称、意图描述、所属套件或来源..." 
+            class="w-full bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-primary)] pl-9 pr-12 py-2 rounded-xl border border-[var(--border-subtle)] focus:outline-none focus:border-cyan-500/60 focus:shadow-[0_0_12px_rgba(6,182,212,0.2)] transition font-sans placeholder-[var(--text-muted)]"
           />
-          <svg class="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5 text-cyan-400/70 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
+          <span class="absolute right-3 top-2 px-1.5 py-0.2 rounded text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+            ⌘K
+          </span>
         </div>
 
-        <!-- 视图切换：套件分组 / 平铺全览 -->
-        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-lg border border-[var(--border-subtle)] text-xs">
+        <!-- 视图分段选择器：套件分组 / 平铺清单 -->
+        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] text-xs font-mono">
           <button 
             @click="viewMode = 'grouped'" 
-            :class="viewMode === 'grouped' ? 'bg-[var(--accent-brand)] text-white shadow-xs font-semibold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-            class="px-2.5 py-1 rounded transition flex items-center gap-1.5"
+            :class="viewMode === 'grouped' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.15)] font-semibold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'"
+            class="px-2.5 py-1 rounded-lg transition flex items-center gap-1.5"
           >
             <span>📦 套件分组</span>
           </button>
           <button 
             @click="viewMode = 'flat'" 
-            :class="viewMode === 'flat' ? 'bg-[var(--accent-brand)] text-white shadow-xs font-semibold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-            class="px-2.5 py-1 rounded transition flex items-center gap-1.5"
+            :class="viewMode === 'flat' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.15)] font-semibold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'"
+            class="px-2.5 py-1 rounded-lg transition flex items-center gap-1.5"
           >
             <span>📄 平铺清单</span>
           </button>
         </div>
 
-        <!-- Agent 选项卡 -->
-        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-lg border border-[var(--border-subtle)] text-xs">
+        <!-- 生效 Agent 筛选胶囊 -->
+        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] text-xs font-mono">
           <button 
             v-for="agent in ['All', 'Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']" 
             :key="agent"
             @click="filterAgent = agent"
-            class="px-2 py-1 rounded font-medium transition"
-            :class="filterAgent === agent ? 'bg-[var(--accent-brand)] text-white shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-2 py-1 rounded-lg transition text-[11px]"
+            :class="filterAgent === agent ? 'bg-[var(--bg-surface)] text-cyan-400 font-semibold border border-cyan-500/30 shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'"
           >
-            {{ agent === 'All' ? '全部Agent' : (agent === 'Claude Code' ? 'Claude' : (agent === 'Antigravity' ? 'Antigravity' : agent)) }}
+            {{ agent === 'All' ? 'ALL' : (agent === 'Claude Code' ? 'Claude' : (agent === 'Antigravity' ? 'Antigravity' : agent)) }}
           </button>
         </div>
 
-        <!-- 状态维度选项卡 -->
-        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-lg border border-[var(--border-subtle)] text-xs">
+        <!-- 状态维度筛选器 -->
+        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] text-xs font-mono">
           <button 
             v-for="st in [
               { key: 'all', label: '全部' },
               { key: 'updatable', label: '可升级', count: updatableCount },
-              { key: 'problem', label: '有异常', count: problemCount },
-              { key: 'external', label: '外部自管' },
-              { key: 'local', label: '本地自建' }
+              { key: 'problem', label: '异常', count: problemCount },
+              { key: 'external', label: '外部' },
+              { key: 'local', label: '自建' }
             ]" 
             :key="st.key"
             @click="filterStatus = st.key"
-            class="px-2 py-1 rounded font-medium transition flex items-center gap-1"
-            :class="filterStatus === st.key ? 'bg-indigo-600 text-white shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-2 py-1 rounded-lg transition flex items-center gap-1 text-[11px]"
+            :class="filterStatus === st.key ? 'bg-indigo-600/30 text-indigo-300 font-semibold border border-indigo-500/40 shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'"
           >
             <span>{{ st.label }}</span>
-            <span v-if="st.count" class="px-1 py-0.2 rounded-full text-[9px] font-mono" :class="filterStatus === st.key ? 'bg-white/20 text-white' : 'bg-amber-500/20 text-amber-400 font-bold'">
+            <span v-if="st.count" class="px-1 py-0.2 rounded-full text-[9px] font-mono" :class="filterStatus === st.key ? 'bg-cyan-500/30 text-cyan-300' : 'bg-amber-500/20 text-amber-400 font-bold'">
               {{ st.count }}
             </span>
           </button>
         </div>
+
       </div>
 
-      <!-- 批量勾选操作 -->
-      <div class="flex items-center gap-2 flex-wrap">
-        <div class="text-xs text-[var(--text-muted)] mr-1">
-          已勾选 <span class="text-[var(--text-primary)] font-bold font-mono">{{ selectedSkills.length }}</span> 项
+      <!-- 批量挂载 / 解绑操作区 -->
+      <div class="flex items-center gap-2 flex-wrap font-mono">
+        <div class="text-xs text-[var(--text-muted)] mr-1 flex items-center gap-1">
+          <span>SELECTED:</span>
+          <span class="text-cyan-400 font-bold font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 border border-cyan-500/20 text-[11px]">{{ selectedSkills.length }}</span>
         </div>
 
         <!-- 批量添加适用 -->
         <div class="relative group">
           <button 
             :disabled="selectedSkills.length === 0" 
-            class="px-3 py-1.5 text-xs rounded-lg bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 transition font-medium"
+            class="px-3 py-1.5 text-xs rounded-xl bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-cyan-400 border border-[var(--border-subtle)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 transition font-medium"
           >
             <span>+ 批量挂载</span>
             <svg class="w-3 h-3 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-          <div class="hidden group-hover:block absolute right-0 mt-1 w-44 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl shadow-xl z-30 py-1 text-xs">
+          <div class="hidden group-hover:block absolute right-0 mt-1 w-44 cyber-glass border border-[var(--border-strong)] rounded-xl shadow-2xl z-30 py-1 text-xs">
             <button 
               v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']" 
               :key="ag" 
               @click="batchAddAgent(ag)"
-              class="w-full text-left px-3.5 py-2 hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-between"
+              class="w-full text-left px-3.5 py-2 hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-cyan-400 flex items-center justify-between"
             >
               <span>挂载给 {{ ag }}</span>
-              <span class="text-[var(--accent-brand)] text-[10px] font-mono">+ADD</span>
+              <span class="text-cyan-400 text-[10px] font-mono">+ADD</span>
             </button>
           </div>
         </div>
@@ -384,20 +472,20 @@
         <div class="relative group">
           <button 
             :disabled="selectedSkills.length === 0" 
-            class="px-3 py-1.5 text-xs rounded-lg bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-rose-500 border border-[var(--border-subtle)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 transition font-medium"
+            class="px-3 py-1.5 text-xs rounded-xl bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-rose-400/80 hover:text-rose-400 border border-[var(--border-subtle)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 transition font-medium"
           >
             <span>- 批量解绑</span>
             <svg class="w-3 h-3 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-          <div class="hidden group-hover:block absolute right-0 mt-1 w-44 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl shadow-xl z-30 py-1 text-xs">
+          <div class="hidden group-hover:block absolute right-0 mt-1 w-44 cyber-glass border border-[var(--border-strong)] rounded-xl shadow-2xl z-30 py-1 text-xs">
             <button 
               v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']" 
               :key="ag" 
               @click="batchRemoveAgent(ag)"
-              class="w-full text-left px-3.5 py-2 hover:bg-[var(--bg-surface-hover)] text-rose-500 hover:text-rose-600 flex items-center justify-between"
+              class="w-full text-left px-3.5 py-2 hover:bg-[var(--bg-surface-hover)] text-rose-400 hover:text-rose-300 flex items-center justify-between"
             >
               <span>解绑 {{ ag }}</span>
-              <span class="text-[10px] font-mono">-DEL</span>
+              <span class="text-rose-400 text-[10px] font-mono">-DEL</span>
             </button>
           </div>
         </div>
@@ -405,83 +493,94 @@
       </div>
     </div>
 
-    <p class="text-xs mb-4 text-[var(--text-muted)]">{{ canWrite ? '写入模式：预览并确认后执行；更新生成候选提交，不自动推送。' : '只读模式：可以盘点与检查更新，文件和软链接不会被修改。' }}</p>
-    <!-- 视图 1：套件分组模式 (支持折叠/展开 + 一键折叠/展开全部) -->
-    <div v-if="viewMode === 'grouped'" class="mt-5 space-y-4">
+    <!-- 模式提示状态条 -->
+    <div class="mt-2.5 px-3 flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+      <span>{{ canWrite ? '● 写入模式：已开启安全预览与原子提交；更新生成候选提交，不自动推送远端。' : '○ 只读保护模式：已开启防改保护，可自由盘点与检查更新。' }}</span>
+      <span class="hidden sm:inline">SKILLS: {{ skills.length }} TOTAL</span>
+    </div>
+
+    <!-- 视图 1：套件分组模式 (Grouped Matrix Mode) -->
+    <div v-if="viewMode === 'grouped'" class="mt-4 space-y-4">
       
-      <!-- 套件总览概览栏与快速折叠控制 -->
-      <div class="flex items-center justify-between px-2 text-xs text-[var(--text-muted)]">
+      <!-- 批量展开 / 折叠全局控制 -->
+      <div class="flex items-center justify-between px-2 text-xs text-[var(--text-muted)] font-mono">
         <div class="flex items-center gap-2">
-          <span>共发现 <strong class="text-[var(--text-primary)] font-mono">{{ displayGroups.length }}</strong> 个套件 / 技能包</span>
-          <span class="text-[var(--border-strong)]">|</span>
-          <span class="text-[11px]">点击套件卡片头部即可自由展开/折叠</span>
+          <span>共载入 <strong class="text-cyan-400 font-mono">{{ displayGroups.length }}</strong> 个套件 / 独立模块</span>
+          <span class="opacity-30">|</span>
+          <span class="text-[11px]">点击卡片头部自由折叠</span>
         </div>
         <div class="flex items-center gap-2">
           <button 
             @click="expandAllGroups" 
-            class="px-2.5 py-1 rounded bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+            class="px-2.5 py-1 rounded-lg bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-cyan-400 transition text-[11px]"
           >
             展开全部
           </button>
           <button 
             @click="collapseAllGroups" 
-            class="px-2.5 py-1 rounded bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+            class="px-2.5 py-1 rounded-lg bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-cyan-400 transition text-[11px]"
           >
             收起全部
           </button>
         </div>
       </div>
 
+      <!-- 套件卡片容器 -->
       <div 
         v-for="grp in displayGroups" 
         :key="grp.id"
-        class="bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden shadow-sm transition-all duration-200"
-        :class="isGroupCollapsed(grp.id) ? 'hover:border-[var(--border-strong)]' : ''"
+        class="cyber-glass specular-top rounded-2xl overflow-hidden transition-all duration-200"
+        :class="isGroupCollapsed(grp.id) ? 'hover:border-cyan-500/40' : 'border-[var(--border-subtle)]'"
       >
-        <!-- 套件头部 Header (整行可点击展开/折叠) -->
+        <!-- 套件头部 Header (整行可折叠) -->
         <div 
           @click="toggleCollapse(grp.id)"
-          class="p-4 bg-[var(--bg-surface-elevated)] flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none transition-colors hover:bg-[var(--bg-surface-hover)]"
+          class="p-4 bg-[var(--bg-surface-elevated)]/60 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none transition-colors hover:bg-[var(--bg-surface-hover)]"
           :class="!isGroupCollapsed(grp.id) ? 'border-b border-[var(--border-subtle)]' : ''"
         >
           
-          <div class="flex items-center gap-3.5">
-            <!-- 折叠指示箭头 -->
-            <div class="w-6 h-6 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-transform duration-200"
-              :class="!isGroupCollapsed(grp.id) ? 'rotate-90 text-[var(--accent-brand)]' : ''">
+          <div class="flex items-center gap-3">
+            <!-- 科技折叠指示器 -->
+            <div 
+              class="w-6 h-6 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-center text-cyan-400 text-[10px] transition-transform duration-200 font-mono"
+              :class="!isGroupCollapsed(grp.id) ? 'rotate-90 bg-cyan-500/10 border-cyan-500/30' : ''"
+            >
               ▶
             </div>
             
-            <span class="text-xl">
-              {{ grp.type === 'suite' ? '📦' : (grp.type === 'plugin' ? '🔌' : '🛠️') }}
-            </span>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-bold text-sm text-[var(--text-primary)] tracking-tight">
-                  {{ grp.name }}
-                </h3>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--bg-surface)] text-[var(--accent-brand)] border border-[var(--border-strong)]">
-                  {{ grp.badge }}
-                </span>
-                <span class="text-xs text-[var(--text-muted)] font-mono">
-                  ({{ grp.filteredSkills.length }} 个技能)
-                </span>
-              </div>
-              <div class="text-[11px] text-[var(--text-muted)] font-mono mt-0.5 flex items-center gap-2">
-                <span>来源: {{ grp.source }}</span>
+            <div class="flex items-center gap-2.5">
+              <span class="text-lg">
+                {{ grp.type === 'suite' ? '📦' : (grp.type === 'plugin' ? '🔌' : '🛠️') }}
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-bold text-sm text-[var(--text-primary)] tracking-tight font-mono">
+                    {{ grp.name }}
+                  </h3>
+                  <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    {{ grp.badge }}
+                  </span>
+                  <span class="text-[11px] text-[var(--text-muted)] font-mono">
+                    ({{ grp.filteredSkills.length }} 项)
+                  </span>
+                </div>
+                <div class="text-[10px] text-[var(--text-muted)] font-mono mt-0.5 flex items-center gap-2">
+                  <span class="opacity-70">SRC:</span>
+                  <span class="text-[var(--text-secondary)] truncate max-w-sm">{{ grp.source }}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 套件级操作区：检查整包更新 / 一键升级整包 / 查看变更 / 全选本组 -->
-          <div class="flex items-center gap-2 flex-wrap" @click.stop>
+          <!-- 套件级操作按钮组 -->
+          <div class="flex items-center gap-2 flex-wrap font-mono" @click.stop>
             
             <!-- 全选本组技能 -->
             <button 
               @click="toggleSelectGroup(grp)" 
-              class="px-2.5 py-1 text-xs rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition"
+              class="px-2.5 py-1 text-[11px] rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-cyan-400 border border-[var(--border-subtle)] transition"
             >
-              {{ isGroupFullySelected(grp) ? '取消全选本组' : '全选本组' }}
+              {{ isGroupFullySelected(grp) ? '取消全选' : '全选本组' }}
             </button>
 
             <!-- 检查整包更新 -->
@@ -489,101 +588,101 @@
               v-if="grp.is_remote_package"
               @click="checkGroupUpdate(grp.id)"
               :disabled="checkingGroupId === grp.id"
-              class="px-3 py-1 text-xs rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] disabled:opacity-30 flex items-center gap-1.5 transition font-medium"
+              class="px-3 py-1 text-[11px] rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-cyan-400 border border-[var(--border-subtle)] disabled:opacity-30 flex items-center gap-1.5 transition font-medium"
             >
-              <svg class="w-3.5 h-3.5 text-[var(--accent-brand)]" :class="{'animate-spin': checkingGroupId === grp.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3.5 h-3.5 text-cyan-400" :class="{'animate-spin': checkingGroupId === grp.id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
               </svg>
-              <span>{{ checkingGroupId === grp.id ? '检查中...' : '检查整包更新' }}</span>
+              <span>{{ checkingGroupId === grp.id ? 'CHECKING...' : '检查整包更新' }}</span>
             </button>
 
             <!-- 查看更新日志与变更对比 -->
             <button 
               v-if="groupUpdateResults[grp.id] && groupUpdateResults[grp.id].diff_summary"
               @click="openChangelog(grp.name, groupUpdateResults[grp.id].diff_summary)"
-              class="px-2.5 py-1 text-xs rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition flex items-center gap-1"
+              class="px-2.5 py-1 text-[11px] rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition flex items-center gap-1 shadow-xs"
               title="查看当前版本到最新版本的提交历史与修改日志"
             >
               <span>📋 更新日志</span>
             </button>
 
-            <!-- 一键升级整包 (当检测到有更新时高亮显示) -->
+            <!-- 一键升级整包 (当检测到有更新时高光脉冲) -->
             <button 
               v-if="groupUpdateResults[grp.id] && groupUpdateResults[grp.id].has_update"
               @click="upgradeGroup(grp.id)"
               :disabled="upgradingGroupId === grp.id"
-              class="px-3.5 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow transition flex items-center gap-1.5 animate-pulse"
+              class="px-3.5 py-1 text-[11px] rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-[0_0_15px_rgba(16,185,129,0.35)] transition flex items-center gap-1.5 animate-pulse"
               :title="canWrite ? '预览固定版本差异，确认后逐 skill 生成独立提交' : '预览套件更新差异（只读模式）'"
             >
               <span v-if="upgradingGroupId === grp.id" class="animate-spin text-[10px]">⚙️</span>
               <span>⚡️ 确认升级套件</span>
             </button>
 
-            <span v-else-if="groupUpdateResults[grp.id] && !groupUpdateResults[grp.id].has_update" class="text-xs text-[var(--text-muted)] font-mono px-2">
-              整包已是最新
+            <span v-else-if="groupUpdateResults[grp.id] && !groupUpdateResults[grp.id].has_update" class="text-[11px] text-[var(--text-muted)] font-mono px-2">
+              已是最新
             </span>
 
           </div>
 
         </div>
 
-        <!-- 套件内部技能列表表格 (折叠控制) -->
+        <!-- 套件内部技能矩阵 (Matrix Table) -->
         <div v-show="!isGroupCollapsed(grp.id)" class="overflow-x-auto custom-scrollbar">
           <table class="w-full text-left text-xs text-[var(--text-secondary)] border-collapse">
             <tbody class="divide-y divide-[var(--border-subtle)] font-sans">
               <tr 
                 v-for="s in grp.filteredSkills" 
                 :key="s.name"
-                class="hover:bg-[var(--bg-surface-hover)] transition-colors group"
-                :class="{'bg-[var(--accent-tint)]': isSelected(s.name), 'bg-amber-500/5': hasChanges(s.name)}"
+                class="hover:bg-[var(--bg-surface-hover)] transition-colors group relative"
+                :class="{'bg-cyan-500/5': isSelected(s.name), 'bg-amber-500/5': hasChanges(s.name)}"
               >
                 <!-- 勾选框 -->
-                <td class="p-3.5 w-10 text-center">
+                <td class="p-3 w-10 text-center">
                   <input 
                     type="checkbox" 
                     :value="s.name" 
                     v-model="selectedSkills"
-                    class="rounded bg-[var(--bg-surface)] border-[var(--border-strong)] text-[var(--accent-brand)] focus:ring-0 cursor-pointer"
+                    class="rounded bg-[var(--bg-surface-elevated)] border-[var(--border-strong)] text-cyan-500 focus:ring-0 cursor-pointer"
                   />
                 </td>
 
-                <!-- 状态 -->
-                <td class="p-3.5 w-12 text-center">
+                <!-- 状态指示灯 -->
+                <td class="p-3 w-10 text-center">
                   <span 
-                    class="inline-block w-2 h-2 rounded-full" 
-                    :class="s.healthy ? 'bg-emerald-500' : 'bg-rose-500'"
-                    :title="s.healthy ? '正常' : s.status"
+                    class="inline-block w-2 h-2 rounded-full shadow-xs" 
+                    :class="s.healthy ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-rose-400 shadow-[0_0_6px_#f43f5e]'"
+                    :title="s.healthy ? '健康正常' : s.status"
                   ></span>
                 </td>
 
                 <!-- 技能标识与子路径 -->
-                <td class="p-3.5 w-52">
+                <td class="p-3 w-52 font-mono">
                   <div class="flex items-center gap-1.5">
-                    <span class="font-mono font-semibold text-[13px] text-[var(--text-primary)]">
+                    <span class="font-bold text-[13px] text-[var(--text-primary)] group-hover:text-cyan-400 transition-colors">
                       {{ s.name }}
                     </span>
-                    <span v-if="hasChanges(s.name)" class="text-[9px] text-amber-500 font-semibold px-1 py-0.2 rounded bg-amber-500/10 border border-amber-500/30">已改</span>
+                    <span v-if="hasChanges(s.name)" class="text-[9px] text-amber-400 font-semibold px-1 py-0.2 rounded bg-amber-500/15 border border-amber-500/30">已改</span>
                   </div>
-                  <div v-if="s.subpath" class="text-[10px] text-[var(--text-muted)] font-mono truncate mt-0.5">
-                    子路径: {{ s.subpath }}
+                  <div v-if="s.subpath" class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                    {{ s.subpath }}
                   </div>
                 </td>
 
-                <!-- 功能简介 -->
-                <td class="p-3.5 min-w-[240px] text-[var(--text-secondary)] leading-relaxed">
+                <!-- 功能简介与意图 -->
+                <td class="p-3 min-w-[260px] text-[var(--text-secondary)] leading-relaxed text-xs">
                   <div class="line-clamp-2" :title="s.description">
                     {{ s.description || '无详细描述' }}
                   </div>
                 </td>
 
                 <!-- 适用 Agent (Pills) -->
-                <td class="p-3.5 w-64">
+                <td class="p-3 w-64">
                   <div class="flex flex-wrap gap-1">
                     <button 
                       v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']"
                       :key="ag"
                       @click="toggleSkillAgent(s.name, ag)"
-                      class="agent-pill px-2 py-0.5 rounded-md border text-[10px] font-mono cursor-pointer flex items-center gap-1"
+                      class="agent-pill px-2 py-0.5 rounded-lg border text-[10px] font-mono cursor-pointer flex items-center gap-1"
                       :class="getAgentPillState(s, ag).class"
                       :title="getAgentPillState(s, ag).tooltip"
                     >
@@ -593,15 +692,17 @@
                   </div>
                 </td>
 
-                <!-- 当前版本与单个状态 -->
-                <td class="p-3.5 w-44 font-mono text-[11px]">
-                  <div class="flex items-center gap-1">
-                    <span class="text-[var(--text-muted)]">版本:</span>
-                    <span class="text-[var(--text-primary)] px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[10px]">{{ s.version || '本地' }} · {{ {candidate: '待试用', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[s.version_state] }}</span>
+                <!-- 当前版本与最新版本状态 -->
+                <td class="p-3 w-44 font-mono text-[11px]">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[var(--text-muted)] text-[10px]">VER:</span>
+                    <span class="text-[var(--text-primary)] px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[10px]">
+                      {{ s.version || '本地' }} · {{ {candidate: '待试用', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[s.version_state] }}
+                    </span>
                   </div>
-                  <div v-if="updateResults[s.name]" class="mt-0.5">
-                    <span v-if="updateResults[s.name].has_update" class="text-emerald-500 text-[10px] font-semibold flex items-center gap-1">
-                      <span>可升至 {{ updateResults[s.name].latest_version }}</span>
+                  <div v-if="updateResults[s.name]" class="mt-1">
+                    <span v-if="updateResults[s.name].has_update" class="text-cyan-400 text-[10px] font-semibold flex items-center gap-1">
+                      <span>可升至 {{ updateResults[s.name].latest_version ? updateResults[s.name].latest_version.slice(0, 8) : '最新' }}</span>
                     </span>
                     <span v-else-if="updateResults[s.name].status === 'latest'" class="text-[var(--text-muted)] text-[10px]">
                       已是最新
@@ -609,27 +710,27 @@
                   </div>
                 </td>
 
-                <!-- 单项极简操作栏 (现代微交互：图标 + 文字胶囊) -->
-                <td class="p-3.5 w-36 text-center">
+                <!-- 单项精工操作栏 -->
+                <td class="p-3 w-36 text-center">
                   <div class="flex items-center justify-center gap-1">
                     
-                    <!-- 升级动作 (高亮微胶囊) -->
+                    <!-- 升级确认按钮 -->
                     <button 
                       v-if="updateResults[s.name] && updateResults[s.name].has_update"
                       @click="upgradeSkill(s.name)"
                       :disabled="upgradingSkillName === s.name"
-                      class="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
+                      class="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-[0_0_10px_rgba(16,185,129,0.3)] transition flex items-center gap-1 text-[11px] font-mono"
                       :title="canWrite ? '查看差异并确认更新' : '查看更新差异（只读模式）'"
                     >
                       <span v-if="upgradingSkillName === s.name" class="animate-spin text-[10px]">⚙️</span>
                       <span v-else>⚡️ 确认更新</span>
                     </button>
 
-                    <!-- 更新日志按钮 (仅在有差异日志时展现) -->
+                    <!-- 查看日志按钮 -->
                     <button 
                       v-if="updateResults[s.name] && updateResults[s.name].diff_summary"
                       @click="openChangelog(s.name, updateResults[s.name].diff_summary)"
-                      class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-blue-400 hover:text-blue-300 transition"
+                      class="p-1.5 rounded-lg hover:bg-cyan-500/10 text-cyan-400 transition"
                       title="查看更新日志"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -637,24 +738,24 @@
                       </svg>
                     </button>
 
-                    <!-- 检查更新按钮 (极简图标按钮) -->
+                    <!-- 检查单个更新 -->
                     <button 
                       v-else-if="s.github_repo"
                       @click="checkSingleUpdate(s.name)"
                       :disabled="checkingSkillName === s.name"
-                      class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                      class="p-1.5 rounded-lg hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-cyan-400 transition"
                       title="检查上游更新"
                     >
-                      <svg class="w-3.5 h-3.5" :class="{'animate-spin text-[var(--accent-brand)]': checkingSkillName === s.name}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="w-3.5 h-3.5" :class="{'animate-spin text-cyan-400': checkingSkillName === s.name}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                       </svg>
                     </button>
 
-                    <!-- 详情按钮 (极简图标按钮) -->
+                    <!-- 查看详情与源码 -->
                     <button 
                       @click="openDetail(s)"
-                      class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
-                      title="查看详情与源码"
+                      class="p-1.5 rounded-lg hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                      title="查看技能详情与源码"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -671,33 +772,33 @@
 
       </div>
 
-      <div v-if="displayGroups.length === 0" class="p-16 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] text-center text-[var(--text-muted)]">
-        未搜索到符合条件的套件或技能
+      <div v-if="displayGroups.length === 0" class="p-16 cyber-glass rounded-2xl text-center text-[var(--text-muted)] font-mono text-xs">
+        未搜索到符合条件的技能或套件
       </div>
 
     </div>
 
     <!-- 视图 2：平铺全览模式 (Flat View) -->
-    <div v-else class="mt-4 flex-1 bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)] overflow-hidden flex flex-col shadow-sm">
+    <div v-else class="mt-4 flex-1 cyber-glass specular-top rounded-2xl overflow-hidden flex flex-col shadow-sm">
       <div class="overflow-x-auto custom-scrollbar flex-1">
         <table class="w-full text-left text-xs text-[var(--text-secondary)] border-collapse">
-          <thead class="bg-[var(--bg-surface-elevated)] text-[11px] text-[var(--text-muted)] uppercase tracking-wider sticky top-0 z-10 border-b border-[var(--border-subtle)]">
+          <thead class="bg-[var(--bg-surface-elevated)] text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-mono sticky top-0 z-10 border-b border-[var(--border-subtle)]">
             <tr>
-              <th class="p-3.5 w-10 text-center">
+              <th class="p-3 w-10 text-center">
                 <input 
                   type="checkbox" 
                   :checked="isAllFilteredSelected" 
                   @change="toggleSelectAll"
-                  class="rounded bg-[var(--bg-surface)] border-[var(--border-strong)] text-[var(--accent-brand)] focus:ring-0 cursor-pointer"
+                  class="rounded bg-[var(--bg-surface-elevated)] border-[var(--border-strong)] text-cyan-500 focus:ring-0 cursor-pointer"
                 />
               </th>
-              <th class="p-3.5 w-14 text-center">状态</th>
-              <th class="p-3.5 w-48 font-semibold text-[var(--text-primary)]">Skill 标识</th>
-              <th class="p-3.5 w-44 font-semibold text-[var(--text-primary)]">所属套件 / 包</th>
-              <th class="p-3.5 min-w-[260px]">功能简介与触发意图</th>
-              <th class="p-3.5 w-64">生效 Agent (点击切换)</th>
-              <th class="p-3.5 w-44">版本与更新</th>
-              <th class="p-3.5 w-28 text-center">操作</th>
+              <th class="p-3 w-12 text-center">STATUS</th>
+              <th class="p-3 w-48 font-semibold text-[var(--text-primary)]">IDENTIFIER</th>
+              <th class="p-3 w-44 font-semibold text-[var(--text-primary)]">PACKAGE</th>
+              <th class="p-3 min-w-[260px]">DESCRIPTION</th>
+              <th class="p-3 w-64">AGENTS</th>
+              <th class="p-3 w-44">VERSION</th>
+              <th class="p-3 w-28 text-center">ACTION</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--border-subtle)] text-xs font-sans">
@@ -705,50 +806,50 @@
               v-for="s in filteredSkills" 
               :key="s.name"
               class="hover:bg-[var(--bg-surface-hover)] transition-colors group"
-              :class="{'bg-[var(--accent-tint)]': isSelected(s.name), 'bg-amber-500/5': hasChanges(s.name)}"
+              :class="{'bg-cyan-500/5': isSelected(s.name), 'bg-amber-500/5': hasChanges(s.name)}"
             >
-              <td class="p-3.5 text-center">
+              <td class="p-3 text-center">
                 <input 
                   type="checkbox" 
                   :value="s.name" 
                   v-model="selectedSkills"
-                  class="rounded bg-[var(--bg-surface)] border-[var(--border-strong)] text-[var(--accent-brand)] focus:ring-0 cursor-pointer"
+                  class="rounded bg-[var(--bg-surface-elevated)] border-[var(--border-strong)] text-cyan-500 focus:ring-0 cursor-pointer"
                 />
               </td>
 
-              <td class="p-3.5 text-center">
+              <td class="p-3 text-center">
                 <span 
                   class="inline-block w-2 h-2 rounded-full" 
-                  :class="s.healthy ? 'bg-emerald-500' : 'bg-rose-500'"
+                  :class="s.healthy ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-rose-400 shadow-[0_0_6px_#f43f5e]'"
                   :title="s.healthy ? '正常' : s.status"
                 ></span>
               </td>
 
-              <td class="p-3.5 font-medium">
+              <td class="p-3 font-mono">
                 <div class="flex items-center gap-1.5">
-                  <span class="font-mono font-semibold text-[13px] text-[var(--text-primary)]">{{ s.name }}</span>
-                  <span v-if="hasChanges(s.name)" class="text-[9px] text-amber-500 font-semibold px-1 py-0.2 rounded bg-amber-500/10 border border-amber-500/30">已改</span>
+                  <span class="font-bold text-[13px] text-[var(--text-primary)] group-hover:text-cyan-400 transition-colors">{{ s.name }}</span>
+                  <span v-if="hasChanges(s.name)" class="text-[9px] text-amber-400 font-semibold px-1 py-0.2 rounded bg-amber-500/15 border border-amber-500/30">已改</span>
                 </div>
               </td>
 
               <!-- 所属套件 -->
-              <td class="p-3.5 font-mono text-[11px]">
-                <span class="px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+              <td class="p-3 font-mono text-[11px]">
+                <span class="px-2 py-0.5 rounded-lg bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
                   {{ s.group_badge }}
                 </span>
               </td>
 
-              <td class="p-3.5 text-[var(--text-secondary)] leading-relaxed">
+              <td class="p-3 text-[var(--text-secondary)] leading-relaxed">
                 <div class="line-clamp-2" :title="s.description">{{ s.description || '无详细功能描述' }}</div>
               </td>
 
-              <td class="p-3.5">
+              <td class="p-3">
                 <div class="flex flex-wrap gap-1">
                   <button 
                     v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']"
                     :key="ag"
                     @click="toggleSkillAgent(s.name, ag)"
-                    class="agent-pill px-2 py-0.5 rounded-md border text-[10px] font-mono cursor-pointer flex items-center gap-1"
+                    class="agent-pill px-2 py-0.5 rounded-lg border text-[10px] font-mono cursor-pointer flex items-center gap-1"
                     :class="getAgentPillState(s, ag).class"
                     :title="getAgentPillState(s, ag).tooltip"
                   >
@@ -758,21 +859,21 @@
                 </div>
               </td>
 
-              <td class="p-3.5 font-mono text-[11px]">
+              <td class="p-3 font-mono text-[11px]">
                 <div class="text-[var(--text-primary)]">{{ s.version || '本地' }} · {{ {candidate: '待试用', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[s.version_state] }}</div>
-                <div v-if="updateResults[s.name] && updateResults[s.name].has_update" class="text-emerald-500 text-[10px] font-semibold">
-                  可升至 {{ updateResults[s.name].latest_version }}
+                <div v-if="updateResults[s.name] && updateResults[s.name].has_update" class="text-cyan-400 text-[10px] font-semibold">
+                  可升至 {{ updateResults[s.name].latest_version ? updateResults[s.name].latest_version.slice(0, 8) : '最新' }}
                 </div>
               </td>
 
-              <td class="p-3.5 text-center">
+              <td class="p-3 text-center">
                 <div class="flex items-center justify-center gap-1">
                   <!-- 升级动作 -->
                   <button 
                     v-if="updateResults[s.name] && updateResults[s.name].has_update"
                     @click="upgradeSkill(s.name)"
                     :disabled="upgradingSkillName === s.name"
-                    class="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
+                    class="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-[0_0_10px_rgba(16,185,129,0.3)] transition flex items-center gap-1 text-[11px] font-mono"
                     :title="canWrite ? '查看差异并确认更新' : '查看更新差异（只读模式）'"
                   >
                     <span>⚡️ 确认更新</span>
@@ -782,7 +883,7 @@
                   <button 
                     v-if="updateResults[s.name] && updateResults[s.name].diff_summary"
                     @click="openChangelog(s.name, updateResults[s.name].diff_summary)"
-                    class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-blue-400 hover:text-blue-300 transition"
+                    class="p-1.5 rounded-lg hover:bg-cyan-500/10 text-cyan-400 transition"
                     title="查看更新日志"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -794,7 +895,7 @@
                   <button 
                     v-else-if="s.github_repo"
                     @click="checkSingleUpdate(s.name)"
-                    class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                    class="p-1.5 rounded-lg hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-cyan-400 transition"
                     title="检查更新"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -805,7 +906,7 @@
                   <!-- 详情 -->
                   <button 
                     @click="openDetail(s)"
-                    class="p-1.5 rounded-md hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
+                    class="p-1.5 rounded-lg hover:bg-[var(--bg-surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
                     title="查看详情"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -821,21 +922,21 @@
       </div>
     </div>
 
-    <!-- 底部固定提交控制栏 -->
-    <div class="mt-6 p-4 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 sticky bottom-4 z-20 backdrop-blur-md">
+    <!-- 底部悬浮控制中枢 (Command Dock) -->
+    <div class="mt-6 p-4 cyber-glass specular-top rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 sticky bottom-4 z-20">
       <div class="flex items-center gap-4">
-        <div class="text-xs">
-          <span class="text-[var(--text-muted)]">待提交变更：</span>
-          <span class="font-bold font-mono text-xs px-2.5 py-1 rounded-md" :class="changeCount > 0 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30' : 'text-[var(--text-muted)]'">
-            {{ changeCount }} 项技能修改待写入
+        <div class="text-xs font-mono">
+          <span class="text-[var(--text-muted)]">MODIFIED:</span>
+          <span class="font-bold ml-1.5 px-2.5 py-1 rounded-lg border text-xs" :class="changeCount > 0 ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'text-[var(--text-muted)] border-transparent'">
+            {{ changeCount }} 项待保存
           </span>
         </div>
         <button 
           v-if="changeCount > 0" 
           @click="discardChanges" 
-          class="text-xs text-rose-500 hover:underline"
+          class="text-xs text-rose-400 hover:text-rose-300 font-mono transition underline"
         >
-          放弃全部修改
+          放弃修改
         </button>
       </div>
 
@@ -845,47 +946,48 @@
           v-model="commitMsg" 
           type="text" 
           placeholder="自定义 Git 提交说明（留空自动生成）" 
-          class="bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-primary)] px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] w-72 focus:outline-none focus:border-[var(--accent-brand)] transition font-sans"
+          class="bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-primary)] px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] w-72 focus:outline-none focus:border-cyan-500/60 transition font-sans placeholder-[var(--text-muted)]"
         />
         <button 
           @click="submitBatchSave" 
           :disabled="!canWrite || changeCount === 0 || saving"
-          class="px-6 py-2.5 rounded-xl bg-[var(--accent-brand)] hover:bg-[var(--accent-hover)] text-white font-semibold text-xs disabled:opacity-30 disabled:cursor-not-allowed shadow-md transition flex items-center gap-2"
+          class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-mono font-semibold text-xs disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_18px_rgba(99,102,241,0.3)] transition active:scale-95 flex items-center gap-2"
         >
           <svg v-if="saving" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
-          <span>{{ saving ? '正在批量写入并更新软链接...' : '一键保存并同步系统软链接' }}</span>
+          <span>{{ saving ? 'WRITING & LINKING...' : '⚡️ 一键保存并同步系统软链接' }}</span>
         </button>
       </div>
     </div>
 
-    <!-- 弹窗 1：版本差异与更新日志弹窗 (Changelog & Diff Modal) -->
-    <div v-if="activeChangelog" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div class="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+    <!-- 弹窗 1：版本差异与更新日志终端弹窗 (Changelog & Diff Terminal) -->
+    <div v-if="activeChangelog" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="cyber-glass specular-top rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-cyan-500/30">
         
         <div class="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-elevated)]">
           <div class="flex items-center gap-2.5">
-            <span class="text-lg">📋</span>
+            <span class="text-cyan-400 font-mono text-base">▶_</span>
             <div>
-              <h3 class="font-bold text-[var(--text-primary)] text-sm">{{ activeChangelog.title }} · 版本变更总结</h3>
+              <h3 class="font-bold text-[var(--text-primary)] text-sm font-mono">{{ activeChangelog.title }} · 版本变更与差异检查</h3>
               <p class="text-[11px] text-[var(--text-muted)] font-mono">
-                从 {{ activeChangelog.data.base_version || '当前' }} 升级至 {{ activeChangelog.data.target_version }}
+                从 {{ activeChangelog.data.base_version ? activeChangelog.data.base_version.slice(0, 8) : '当前' }} → {{ activeChangelog.data.target_version ? activeChangelog.data.target_version.slice(0, 8) : '最新' }}
               </p>
             </div>
           </div>
-          <button @click="activeChangelog = null" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-base p-1.5 rounded-lg hover:bg-[var(--bg-surface-hover)] transition">✕</button>
+          <button @click="activeChangelog = null" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1.5 rounded-lg hover:bg-[var(--bg-surface-hover)] transition">✕</button>
         </div>
 
-        <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs">
+        <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs font-sans">
           
-          <!-- 概览总结卡片 -->
-          <div class="bg-[var(--bg-surface-elevated)] p-3 rounded-xl border border-[var(--border-subtle)] space-y-2">
-            <div class="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
-              <span>💡 核心变更摘要：</span>
+          <!-- 核心摘要卡片 -->
+          <div class="bg-[var(--bg-surface-elevated)] p-3.5 rounded-xl border border-[var(--border-subtle)] space-y-2">
+            <div class="font-bold text-[var(--text-primary)] flex items-center gap-1.5 font-mono text-[11px]">
+              <span class="text-cyan-400">⚡️</span>
+              <span>核心变更摘要 (SUMMARY)：</span>
             </div>
-            <ul class="list-disc list-inside space-y-1 text-[var(--text-secondary)] pl-1 leading-relaxed">
-              <li v-for="(b, idx) in activeChangelog.data.summary_bullets" :key="idx" class="font-mono text-[11px]">
+            <ul class="list-disc list-inside space-y-1 text-[var(--text-secondary)] pl-1 leading-relaxed font-mono text-[11px]">
+              <li v-for="(b, idx) in activeChangelog.data.summary_bullets" :key="idx">
                 {{ b }}
               </li>
             </ul>
@@ -893,73 +995,79 @@
 
           <!-- 提交历史明细列表 -->
           <div>
-            <label class="block text-[var(--text-muted)] font-semibold mb-2">
-              包含的 Git 提交历史 (共 {{ activeChangelog.data.commits ? activeChangelog.data.commits.length : 0 }} 条提交)：
+            <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-2">
+              COMMITS ({{ activeChangelog.data.commits ? activeChangelog.data.commits.length : 0 }} 条提交)：
             </label>
             <div class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
               <div 
                 v-for="c in activeChangelog.data.commits" 
                 :key="c.sha"
-                class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-lg border border-[var(--border-subtle)] flex flex-col gap-1 text-[11px]"
+                class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-xl border border-[var(--border-subtle)] flex flex-col gap-1 text-[11px] font-mono"
               >
                 <div class="flex items-center justify-between gap-2">
-                  <span class="text-blue-400 font-mono font-semibold">{{ c.sha }}</span>
-                  <span class="text-[var(--text-muted)] text-[10px] font-mono">{{ c.date }}</span>
+                  <span class="text-cyan-400 font-bold">{{ c.sha }}</span>
+                  <span class="text-[var(--text-muted)] text-[10px]">{{ c.date }}</span>
                 </div>
-                <div class="text-[var(--text-primary)] font-medium leading-relaxed">
+                <div class="text-[var(--text-primary)] font-sans leading-relaxed">
                   {{ c.message_zh || c.message }}
                 </div>
-                <div v-if="c.message_zh && c.message_zh !== c.message" class="text-[var(--text-muted)] text-[10px] font-mono truncate">
+                <div v-if="c.message_zh && c.message_zh !== c.message" class="text-[var(--text-muted)] text-[10px] truncate">
                   原文: {{ c.message }}
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 文件改动统计 -->
+          <!-- 文件改动代码差异 -->
           <div v-if="activeChangelog.data.patch">
-            <p class="text-xs mb-2">请检查脚本、hooks、依赖和权限变化。以下为实际文件差异：</p>
-            <pre class="text-xs whitespace-pre-wrap max-h-80 overflow-auto">{{ activeChangelog.data.patch }}</pre>
+            <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-1.5">
+              PATCH INSPECTOR (请检查脚本、hooks、依赖和权限变化)：
+            </label>
+            <pre class="code-terminal p-3.5 rounded-xl text-emerald-400/90 font-mono text-[11px] whitespace-pre-wrap max-h-72 overflow-auto custom-scrollbar leading-relaxed">{{ activeChangelog.data.patch }}</pre>
           </div>
-          <p v-if="activeChangelog.data.truncated" class="text-rose-500 text-xs">差异过大，已截断；禁止自动更新，请人工检查完整内容。</p>
+          <p v-if="activeChangelog.data.truncated" class="text-rose-400 font-mono text-xs">
+            ⚠️ 差异过大已截断；禁止自动更新，请人工检查完整内容。
+          </p>
+
+          <!-- Diff Stat -->
           <div v-if="activeChangelog.data.diff_stat">
-            <label class="block text-[var(--text-muted)] font-semibold mb-1">文件变更统计 (Diff Stat)：</label>
-            <pre class="bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono text-[10px] overflow-x-auto max-h-32 custom-scrollbar whitespace-pre-wrap">{{ activeChangelog.data.diff_stat }}</pre>
+            <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-1">DIFF STAT：</label>
+            <pre class="code-terminal p-3 rounded-xl text-[var(--text-secondary)] font-mono text-[10px] overflow-x-auto max-h-28 custom-scrollbar whitespace-pre-wrap">{{ activeChangelog.data.diff_stat }}</pre>
           </div>
 
         </div>
 
-        <div class="p-3.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex items-center justify-between gap-3 flex-wrap">
-          <div class="flex items-center gap-2 text-[11px] text-[var(--text-muted)] font-mono">
+        <div class="p-3.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex items-center justify-between gap-3 flex-wrap font-mono">
+          <div class="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
             <span>基线: {{ activeChangelog.data.base_version ? activeChangelog.data.base_version.slice(0, 8) : '当前' }}</span>
             <span>→</span>
-            <span class="text-emerald-400 font-semibold">目标: {{ activeChangelog.data.target_version ? activeChangelog.data.target_version.slice(0, 8) : '最新' }}</span>
+            <span class="text-cyan-400 font-bold">目标: {{ activeChangelog.data.target_version ? activeChangelog.data.target_version.slice(0, 8) : '最新' }}</span>
           </div>
 
           <div class="flex items-center gap-2">
             <!-- 只读模式引导提示 -->
-            <div v-if="!canWrite" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs">
+            <div v-if="!canWrite" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs">
               <span>🛡️ 当前为只读模式</span>
               <button 
                 @click="copyCommand('python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py --allow-write')"
-                class="underline hover:text-amber-400 font-medium cursor-pointer"
+                class="underline hover:text-amber-300 font-medium cursor-pointer"
                 title="点击复制写模式启动命令"
               >
-                复制写入启动命令
+                复制写入命令
               </button>
             </div>
 
-            <!-- 写入模式确认按钮 -->
+            <!-- 写入模式确认升级按钮 -->
             <button 
               v-if="activeChangelog.approve && canWrite" 
               :disabled="activeChangelog.data.truncated" 
               @click="activeChangelog.approve()" 
-              class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              class="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-[0_0_15px_rgba(16,185,129,0.35)] transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
               <span>🚀 确认按此差异更新</span>
             </button>
 
-            <button @click="activeChangelog = null" class="px-4 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">
+            <button @click="activeChangelog = null" class="px-3.5 py-1.5 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">
               关闭
             </button>
           </div>
@@ -968,55 +1076,55 @@
       </div>
     </div>
 
-    <!-- 弹窗 2：技能详情弹窗 -->
-    <div v-if="activeSkill" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div class="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+    <!-- 弹窗 2：技能详情与稳定标签弹窗 (Skill Inspector) -->
+    <div v-if="activeSkill" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="cyber-glass specular-top rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-cyan-500/30">
         
         <div class="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-elevated)]">
           <div class="flex items-center gap-2.5">
-            <span class="text-lg">📄</span>
+            <span class="text-cyan-400 text-lg">📄</span>
             <div>
               <h3 class="font-bold text-[var(--text-primary)] text-sm font-mono">{{ activeSkill.name }}</h3>
-              <p class="text-[11px] text-[var(--text-muted)] font-mono">{{ activeSkill.path }}</p>
-              <p v-for="f in activeSkill.findings.filter(f => f.status !== 'linked')" class="text-xs text-amber-500">{{ f.status }}：{{ f.target || f.path }}</p>
+              <p class="text-[11px] text-[var(--text-muted)] font-mono truncate max-w-md">{{ activeSkill.path }}</p>
+              <p v-for="f in activeSkill.findings.filter(f => f.status !== 'linked')" class="text-xs text-amber-400 font-mono">{{ f.status }}：{{ f.target || f.path }}</p>
             </div>
           </div>
-          <button @click="activeSkill = null" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-base p-1.5 rounded-lg hover:bg-[var(--bg-surface-hover)] transition">✕</button>
+          <button @click="activeSkill = null" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1.5 rounded-lg hover:bg-[var(--bg-surface-hover)] transition">✕</button>
         </div>
 
-        <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs">
+        <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs font-sans">
           <div>
-            <label class="block text-[var(--text-muted)] font-semibold mb-1">功能简介与触发说明：</label>
-            <div class="bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] leading-relaxed font-sans">
+            <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-1">功能简介与触发说明：</label>
+            <div class="bg-[var(--bg-surface-elevated)] p-3 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] leading-relaxed">
               {{ activeSkill.description }}
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-[var(--text-muted)] font-semibold mb-1">所属套件与来源：</label>
-              <div class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono truncate text-[11px]">
+              <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-1">所属套件：</label>
+              <div class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono truncate text-[11px]">
                 {{ activeSkill.group_name }}
               </div>
             </div>
             <div>
-              <label class="block text-[var(--text-muted)] font-semibold mb-1">安装/更新说明：</label>
-              <div class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono truncate text-[11px]">
+              <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-1">安装/更新策略：</label>
+              <div class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-xl border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono truncate text-[11px]">
                 {{ activeSkill.notes || '-' }}
               </div>
             </div>
           </div>
 
           <!-- 版本状态与回退板块 -->
-          <div class="bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-subtle)] space-y-2">
+          <div class="bg-[var(--bg-surface-elevated)] p-3 rounded-xl border border-[var(--border-subtle)] space-y-2">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="font-semibold text-[var(--text-primary)]">🏷️ 版本状态:</span>
-                <span class="px-2 py-0.5 rounded text-[10px] font-mono" :class="{
-                  'bg-emerald-500/20 text-emerald-400': activeSkill.version_state === 'stable',
-                  'bg-amber-500/20 text-amber-400': activeSkill.version_state === 'candidate',
-                  'bg-blue-500/20 text-blue-400': activeSkill.version_state === 'external',
-                  'bg-slate-500/20 text-slate-400': activeSkill.version_state === 'unverified'
+                <span class="font-bold text-[var(--text-primary)] font-mono">🏷️ 状态:</span>
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-mono" :class="{
+                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': activeSkill.version_state === 'stable',
+                  'bg-amber-500/20 text-amber-400 border border-amber-500/30': activeSkill.version_state === 'candidate',
+                  'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30': activeSkill.version_state === 'external',
+                  'bg-slate-500/20 text-slate-400 border border-slate-500/30': activeSkill.version_state === 'unverified'
                 }">
                   {{ {candidate: '待试用候选', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[activeSkill.version_state] || activeSkill.version_state }}
                 </span>
@@ -1027,7 +1135,7 @@
                 v-if="canWrite && activeSkill.version_state === 'candidate'"
                 @click="tagStable(activeSkill.name)"
                 :disabled="taggingStable"
-                class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium transition flex items-center gap-1 shadow-xs"
+                class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-mono font-medium transition flex items-center gap-1 shadow-xs"
                 title="标记为稳定并打 stable 标签"
               >
                 <span v-if="taggingStable" class="animate-spin text-[10px]">⚙️</span>
@@ -1039,9 +1147,9 @@
             <div class="pt-1 border-t border-[var(--border-subtle)]">
               <div v-if="loadingTags" class="text-[11px] text-[var(--text-muted)] font-mono">加载稳定标签中...</div>
               <div v-else-if="skillTags.length > 0" class="space-y-1.5">
-                <div class="text-[11px] text-[var(--text-muted)] font-medium">历史稳定版本 (可一键回退)：</div>
+                <div class="text-[11px] text-[var(--text-muted)] font-mono">历史稳定版本：</div>
                 <div class="flex flex-wrap gap-2">
-                  <div v-for="t in skillTags" :key="t.tag" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono shadow-xs">
+                  <div v-for="t in skillTags" :key="t.tag" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono shadow-xs">
                     <span class="text-emerald-400 font-semibold">{{ t.tag }}</span>
                     <span class="text-[var(--text-muted)] text-[10px]">({{ t.info }})</span>
                     <button 
@@ -1062,30 +1170,32 @@
           </div>
 
           <div>
-            <label class="block text-[var(--text-muted)] font-semibold mb-1">SKILL.md 完整内容：</label>
-            <pre class="bg-[var(--bg-surface-elevated)] p-3.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono text-[11px] overflow-x-auto max-h-56 custom-scrollbar whitespace-pre-wrap leading-relaxed">{{ activeSkill.skill_content || '未找到 SKILL.md' }}</pre>
+            <label class="block text-[var(--text-muted)] font-mono text-[11px] mb-1">SKILL.md 完整内容：</label>
+            <pre class="code-terminal p-3.5 rounded-xl text-[var(--text-secondary)] font-mono text-[11px] overflow-x-auto max-h-56 custom-scrollbar whitespace-pre-wrap leading-relaxed">{{ activeSkill.skill_content || '未找到 SKILL.md' }}</pre>
           </div>
         </div>
 
-        <div class="p-3.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex items-center justify-between">
-          <div class="text-[11px] text-[var(--text-muted)] font-mono">
-            检查时间：{{ activeSkill.last_checked }}
+        <div class="p-3.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex items-center justify-between font-mono">
+          <div class="text-[11px] text-[var(--text-muted)]">
+            CHECKED: {{ activeSkill.last_checked }}
           </div>
-          <button @click="activeSkill = null" class="px-4 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">关闭</button>
+          <button @click="activeSkill = null" class="px-3.5 py-1.5 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">
+            关闭
+          </button>
         </div>
 
       </div>
     </div>
 
-    <!-- Toast 顶部中央通知 -->
+    <!-- 顶端悬浮 Toast 通知 (HUD Pill) -->
     <div 
       v-if="toast.show" 
-      class="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full shadow-2xl border text-xs font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-md"
+      class="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full shadow-2xl border text-xs font-mono font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-md"
       :class="toast.type === 'success' 
-        ? 'bg-[#0f172a]/95 dark:bg-[#1e293b]/95 border-emerald-500/40 text-emerald-400 dark:text-emerald-300 shadow-emerald-950/20' 
-        : 'bg-[#0f172a]/95 dark:bg-[#1e293b]/95 border-rose-500/40 text-rose-400 dark:text-rose-300 shadow-rose-950/20'"
+        ? 'bg-slate-900/90 border-cyan-500/40 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]' 
+        : 'bg-slate-900/90 border-rose-500/40 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.25)]'"
     >
-      <span class="text-sm">{{ toast.type === 'success' ? '✓' : '⚠️' }}</span>
+      <span class="text-sm">{{ toast.type === 'success' ? '⚡️' : '⚠️' }}</span>
       <span>{{ toast.message }}</span>
     </div>
 
@@ -1158,7 +1268,7 @@
         const updateResults = ref({});
         const groupUpdateResults = ref({});
 
-        const themeMode = ref(localStorage.getItem('skills_manager_theme') || 'system');
+        const themeMode = ref(localStorage.getItem('skills_manager_theme') || 'dark');
 
         const applyTheme = () => {
           const isDark = themeMode.value === 'dark' || 
