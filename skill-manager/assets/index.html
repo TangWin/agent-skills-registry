@@ -186,6 +186,32 @@
           </span>
         </div>
 
+        <!-- 一键修复软链接按钮 (当检测到有异常链接时显示) -->
+        <button 
+          v-if="repairableCount > 0"
+          @click="runRepair"
+          :disabled="repairingLinks"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-sm transition animate-pulse"
+          title="点击一键安全补齐漏链、清除死链与无效链接"
+        >
+          <span v-if="repairingLinks" class="animate-spin text-[10px]">⚙️</span>
+          <span v-else>⚡️</span>
+          <span>修复软链接 ({{ repairableCount }})</span>
+        </button>
+
+        <!-- CLI 运行依赖健康度 -->
+        <div v-if="dependencies && Object.keys(dependencies).length" class="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)] shadow-sm">
+          <span class="text-[var(--text-secondary)]">CLI:</span>
+          <span v-for="(ok, dep) in dependencies" :key="dep" class="flex items-center gap-0.5" :class="ok ? 'text-emerald-400 font-medium' : 'text-rose-400 opacity-60'">
+            {{ dep }}{{ ok ? '✓' : '✗' }}
+          </span>
+        </div>
+
+        <!-- 只读保护模式提示 -->
+        <div v-if="!canWrite" class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-medium" title="当前为只读保护模式">
+          <span>🛡️ 只读保护</span>
+        </div>
+
         <!-- Git 远端同步 -->
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs shadow-sm">
           <span class="text-[var(--text-muted)]">Git:</span>
@@ -286,7 +312,29 @@
             class="px-2 py-1 rounded font-medium transition"
             :class="filterAgent === agent ? 'bg-[var(--accent-brand)] text-white shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
           >
-            {{ agent === 'All' ? '全部' : (agent === 'Claude Code' ? 'Claude' : (agent === 'Antigravity' ? 'Antigravity' : agent)) }}
+            {{ agent === 'All' ? '全部Agent' : (agent === 'Claude Code' ? 'Claude' : (agent === 'Antigravity' ? 'Antigravity' : agent)) }}
+          </button>
+        </div>
+
+        <!-- 状态维度选项卡 -->
+        <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-lg border border-[var(--border-subtle)] text-xs">
+          <button 
+            v-for="st in [
+              { key: 'all', label: '全部' },
+              { key: 'updatable', label: '可升级', count: updatableCount },
+              { key: 'problem', label: '有异常', count: problemCount },
+              { key: 'external', label: '外部自管' },
+              { key: 'local', label: '本地自建' }
+            ]" 
+            :key="st.key"
+            @click="filterStatus = st.key"
+            class="px-2 py-1 rounded font-medium transition flex items-center gap-1"
+            :class="filterStatus === st.key ? 'bg-indigo-600 text-white shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+          >
+            <span>{{ st.label }}</span>
+            <span v-if="st.count" class="px-1 py-0.2 rounded-full text-[9px] font-mono" :class="filterStatus === st.key ? 'bg-white/20 text-white' : 'bg-amber-500/20 text-amber-400 font-bold'">
+              {{ st.count }}
+            </span>
           </button>
         </div>
       </div>
@@ -450,12 +498,12 @@
             <button 
               v-if="groupUpdateResults[grp.id] && groupUpdateResults[grp.id].has_update"
               @click="upgradeGroup(grp.id)"
-              :disabled="!canWrite || upgradingGroupId === grp.id"
+              :disabled="upgradingGroupId === grp.id"
               class="px-3.5 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow transition flex items-center gap-1.5 animate-pulse"
-              title="预览固定版本差异，确认后逐 skill 生成独立提交"
+              :title="canWrite ? '预览固定版本差异，确认后逐 skill 生成独立提交' : '预览套件更新差异（只读模式）'"
             >
               <span v-if="upgradingGroupId === grp.id" class="animate-spin text-[10px]">⚙️</span>
-              <span>预览套件更新</span>
+              <span>⚡️ 确认升级套件</span>
             </button>
 
             <span v-else-if="groupUpdateResults[grp.id] && !groupUpdateResults[grp.id].has_update" class="text-xs text-[var(--text-muted)] font-mono px-2">
@@ -556,12 +604,12 @@
                     <button 
                       v-if="updateResults[s.name] && updateResults[s.name].has_update"
                       @click="upgradeSkill(s.name)"
-                      :disabled="!canWrite || upgradingSkillName === s.name"
-                      class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
-                      title="升级该技能"
+                      :disabled="upgradingSkillName === s.name"
+                      class="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
+                      :title="canWrite ? '查看差异并确认更新' : '查看更新差异（只读模式）'"
                     >
                       <span v-if="upgradingSkillName === s.name" class="animate-spin text-[10px]">⚙️</span>
-                      <span v-else>预览更新</span>
+                      <span v-else>⚡️ 确认更新</span>
                     </button>
 
                     <!-- 更新日志按钮 (仅在有差异日志时展现) -->
@@ -710,10 +758,11 @@
                   <button 
                     v-if="updateResults[s.name] && updateResults[s.name].has_update"
                     @click="upgradeSkill(s.name)"
-                    :disabled="!canWrite || upgradingSkillName === s.name"
-                    class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
+                    :disabled="upgradingSkillName === s.name"
+                    class="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs transition flex items-center gap-1 text-[11px]"
+                    :title="canWrite ? '查看差异并确认更新' : '查看更新差异（只读模式）'"
                   >
-                    <span>预览更新</span>
+                    <span>⚡️ 确认更新</span>
                   </button>
 
                   <!-- 查看日志 -->
@@ -867,12 +916,40 @@
 
         </div>
 
-        <div class="p-3.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex items-center justify-between">
-          <span class="text-[11px] text-[var(--text-muted)] font-mono">
-            仓库: {{ activeChangelog.data.repo }}
-          </span>
-          <button v-if="activeChangelog.approve" :disabled="activeChangelog.data.truncated" @click="activeChangelog.approve()" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs disabled:opacity-30">确认按此差异更新</button>
-          <button @click="activeChangelog = null" class="px-4 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">关闭</button>
+        <div class="p-3.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex items-center justify-between gap-3 flex-wrap">
+          <div class="flex items-center gap-2 text-[11px] text-[var(--text-muted)] font-mono">
+            <span>基线: {{ activeChangelog.data.base_version ? activeChangelog.data.base_version.slice(0, 8) : '当前' }}</span>
+            <span>→</span>
+            <span class="text-emerald-400 font-semibold">目标: {{ activeChangelog.data.target_version ? activeChangelog.data.target_version.slice(0, 8) : '最新' }}</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- 只读模式引导提示 -->
+            <div v-if="!canWrite" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs">
+              <span>🛡️ 当前为只读模式</span>
+              <button 
+                @click="copyCommand('python3 /Users/tangw/.agents/skills/skill-manager/scripts/web_server.py --allow-write')"
+                class="underline hover:text-amber-400 font-medium cursor-pointer"
+                title="点击复制写模式启动命令"
+              >
+                复制写入启动命令
+              </button>
+            </div>
+
+            <!-- 写入模式确认按钮 -->
+            <button 
+              v-if="activeChangelog.approve && canWrite" 
+              :disabled="activeChangelog.data.truncated" 
+              @click="activeChangelog.approve()" 
+              class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              <span>🚀 确认按此差异更新</span>
+            </button>
+
+            <button @click="activeChangelog = null" class="px-4 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-medium transition">
+              关闭
+            </button>
+          </div>
         </div>
 
       </div>
@@ -913,6 +990,60 @@
               <label class="block text-[var(--text-muted)] font-semibold mb-1">安装/更新说明：</label>
               <div class="bg-[var(--bg-surface-elevated)] p-2.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono truncate text-[11px]">
                 {{ activeSkill.notes || '-' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 版本状态与回退板块 -->
+          <div class="bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-subtle)] space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-[var(--text-primary)]">🏷️ 版本状态:</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono" :class="{
+                  'bg-emerald-500/20 text-emerald-400': activeSkill.version_state === 'stable',
+                  'bg-amber-500/20 text-amber-400': activeSkill.version_state === 'candidate',
+                  'bg-blue-500/20 text-blue-400': activeSkill.version_state === 'external',
+                  'bg-slate-500/20 text-slate-400': activeSkill.version_state === 'unverified'
+                }">
+                  {{ {candidate: '待试用候选', stable: '已稳定', external: '外部自管', unverified: '未锁定'}[activeSkill.version_state] || activeSkill.version_state }}
+                </span>
+              </div>
+
+              <!-- 标记稳定按钮 -->
+              <button 
+                v-if="canWrite && activeSkill.version_state === 'candidate'"
+                @click="tagStable(activeSkill.name)"
+                :disabled="taggingStable"
+                class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium transition flex items-center gap-1 shadow-xs"
+                title="标记为稳定并打 stable 标签"
+              >
+                <span v-if="taggingStable" class="animate-spin text-[10px]">⚙️</span>
+                <span>标记稳定 (tag-stable)</span>
+              </button>
+            </div>
+
+            <!-- 可回退稳定版本列表 -->
+            <div class="pt-1 border-t border-[var(--border-subtle)]">
+              <div v-if="loadingTags" class="text-[11px] text-[var(--text-muted)] font-mono">加载稳定标签中...</div>
+              <div v-else-if="skillTags.length > 0" class="space-y-1.5">
+                <div class="text-[11px] text-[var(--text-muted)] font-medium">历史稳定版本 (可一键回退)：</div>
+                <div class="flex flex-wrap gap-2">
+                  <div v-for="t in skillTags" :key="t.tag" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono shadow-xs">
+                    <span class="text-emerald-400 font-semibold">{{ t.tag }}</span>
+                    <span class="text-[var(--text-muted)] text-[10px]">({{ t.info }})</span>
+                    <button 
+                      v-if="canWrite"
+                      @click="rollbackToTag(activeSkill.name, t.tag)"
+                      class="text-rose-400 hover:text-rose-300 font-semibold ml-1 cursor-pointer text-[10px] underline"
+                      title="回退到此稳定版本"
+                    >
+                      回退
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-[11px] text-[var(--text-muted)] font-mono">
+                暂无历史稳定标签 (stable/{{ activeSkill.name }}/*)
               </div>
             </div>
           </div>
@@ -978,10 +1109,17 @@
         const viewMode = ref('grouped'); // 'grouped' | 'flat'
         const searchQuery = ref('');
         const filterAgent = ref('All');
+        const filterStatus = ref('all');
         const selectedSkills = ref([]);
         const activeSkill = ref(null);
         const activeChangelog = ref(null);
         const commitMsg = ref('');
+
+        const dependencies = ref({});
+        const repairingLinks = ref(false);
+        const skillTags = ref([]);
+        const loadingTags = ref(false);
+        const taggingStable = ref(false);
 
         const collapsedGroups = ref(new Set());
         const isGroupCollapsed = (gid) => collapsedGroups.value.has(gid);
@@ -1044,6 +1182,7 @@
             groups.value = data.groups || [];
             audit.value = data.audit || {};
             gitStatus.value = data.git || {};
+            dependencies.value = data.dependencies || {};
             modifiedAgents.value = {};
             
             if (collapsedGroups.value.size === 0) {
@@ -1058,6 +1197,35 @@
 
         const healthyCount = computed(() => skills.value.filter(s => s.healthy).length);
         const auditHealthy = computed(() => healthyCount.value === skills.value.length && skills.value.length > 0);
+        const repairableCount = computed(() => {
+          const sum = audit.value?.summary || {};
+          return (sum.missing_link || 0) + (sum.unexpected_link || 0) + (sum.broken_link || 0);
+        });
+        const updatableCount = computed(() => {
+          const singleCount = Object.values(updateResults.value).filter(r => r && r.has_update).length;
+          const groupCount = Object.values(groupUpdateResults.value).filter(r => r && r.has_update).length;
+          return singleCount + groupCount;
+        });
+        const problemCount = computed(() => {
+          return skills.value.filter(s => !s.healthy || (s.findings && s.findings.some(f => f.status !== 'linked'))).length;
+        });
+
+        const checkStatusMatch = (skill) => {
+          if (filterStatus.value === 'all') return true;
+          if (filterStatus.value === 'updatable') {
+            return Boolean(updateResults.value[skill.name]?.has_update);
+          }
+          if (filterStatus.value === 'problem') {
+            return !skill.healthy || (skill.findings && skill.findings.some(f => f.status !== 'linked'));
+          }
+          if (filterStatus.value === 'external') {
+            return skill.version_state === 'external' || skill.is_external;
+          }
+          if (filterStatus.value === 'local') {
+            return skill.source && skill.source.startsWith('local:');
+          }
+          return true;
+        };
 
         const getWorkingAgents = (skillName) => {
           if (modifiedAgents.value[skillName] !== undefined) {
@@ -1148,9 +1316,10 @@
             const data = await res.json();
             updateResults.value[skillName] = data;
             if (data.ok && data.has_update) {
-              showToast(`${skillName} 发现新提交：${data.latest_version || '最新'}`);
+              showToast(`${skillName} 发现新版本：${data.latest_version ? data.latest_version.slice(0, 8) : '最新'}，已自动展开确认面板`);
+              upgradeSkill(skillName);
             } else if (data.ok) {
-              showToast(`${skillName} ${data.message || '已是最新'}`);
+              showToast(`${skillName} ${data.message || '已是最新版本'}`);
             } else {
               showToast(`检查失败：${data.error || '无法获取版本信息'}`, 'error');
             }
@@ -1173,9 +1342,10 @@
             groupUpdateResults.value[groupId] = data;
             if (data.ok && data.has_update) {
               const count = data.updatable_skills ? data.updatable_skills.length : 0;
-              showToast(`套件发现新版本 ${data.latest_version || ''}，共 ${count} 个技能可升级！`);
+              showToast(`套件发现新版本，共 ${count} 个技能可升级，已自动展开确认面板！`);
+              upgradeGroup(groupId);
             } else if (data.ok) {
-              showToast(data.message || `套件已是最新版本 (${data.latest_version || '当前版本'})`);
+              showToast(data.message || `套件已是最新版本`);
             } else {
               showToast(`套件检查失败：${data.error || '未知错误'}`, 'error');
             }
@@ -1227,8 +1397,6 @@
             const data = await res.json();
             if (data.ok) {
               showToast(data.message);
-              
-              // 关键联动：整包升级成功后，同步清理该套件下所有技能的单个待更新徽章和日志
               const grp = groups.value.find(g => g.id === groupId);
               if (grp && grp.skills) {
                 grp.skills.forEach(s => {
@@ -1249,21 +1417,38 @@
         };
 
         const upgradeSkill = (name) => {
-          if (!requireWrite()) return;
           const plan = updateResults.value[name];
-          if (!plan?.plan_id) return showToast('请先重新检查更新', 'error');
-          activeChangelog.value = { title: name, data: plan.diff_summary,
-            approve: async () => { activeChangelog.value = null; await applyUpgradeSkill(name, plan.plan_id); } };
+          if (!plan?.plan_id && !plan?.diff_summary) return showToast('请先重新检查更新', 'error');
+          activeChangelog.value = {
+            title: name,
+            data: plan.diff_summary,
+            planId: plan.plan_id,
+            approve: async () => {
+              if (!requireWrite()) return;
+              activeChangelog.value = null;
+              await applyUpgradeSkill(name, plan.plan_id);
+            }
+          };
         };
+
         const upgradeGroup = (id) => {
-          if (!requireWrite()) return;
           const result = groupUpdateResults.value[id];
-          if (!result?.plan_id) return showToast('请先重新检查套件', 'error');
+          if (!result?.plan_id && !result?.diff_summary) return showToast('请先重新检查套件', 'error');
           const plans = result.plans || [];
-          activeChangelog.value = { title: '逐 skill 更新预览',
-            data: { ...result.diff_summary, patch: plans.map(p => p.name + '\n' + p.diff_summary.patch).join('\n\n'),
-                    truncated: plans.some(p => p.diff_summary.truncated) },
-            approve: async () => { activeChangelog.value = null; await applyUpgradeGroup(id, result.plan_id); } };
+          activeChangelog.value = {
+            title: '套件合并更新预览',
+            data: {
+              ...result.diff_summary,
+              patch: plans.map(p => p.name + '\n' + (p.diff_summary ? p.diff_summary.patch : '')).join('\n\n'),
+              truncated: plans.some(p => p.diff_summary && p.diff_summary.truncated)
+            },
+            planId: result.plan_id,
+            approve: async () => {
+              if (!requireWrite()) return;
+              activeChangelog.value = null;
+              await applyUpgradeGroup(id, result.plan_id);
+            }
+          };
         };
 
         const discardChanges = () => {
@@ -1280,8 +1465,9 @@
             
             const currentAgents = getWorkingAgents(s.name);
             const matchAgent = filterAgent.value === 'All' || currentAgents.includes(filterAgent.value);
+            const matchStatus = checkStatusMatch(s);
 
-            return matchQuery && matchAgent;
+            return matchQuery && matchAgent && matchStatus;
           });
         });
 
@@ -1292,7 +1478,8 @@
               const matchQuery = !q || s.name.toLowerCase().includes(q) || (s.description && s.description.toLowerCase().includes(q)) || (g.name && g.name.toLowerCase().includes(q)) || (s.source && s.source.toLowerCase().includes(q));
               const currentAgents = getWorkingAgents(s.name);
               const matchAgent = filterAgent.value === 'All' || currentAgents.includes(filterAgent.value);
-              return matchQuery && matchAgent;
+              const matchStatus = checkStatusMatch(s);
+              return matchQuery && matchAgent && matchStatus;
             });
             return {
               ...g,
@@ -1331,8 +1518,117 @@
           }
         };
 
+        const copyCommand = (cmd) => {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(cmd).then(() => {
+              showToast('已复制启动命令到剪贴板！');
+            }).catch(() => {
+              showToast('复制失败，请手动在终端输入', 'error');
+            });
+          } else {
+            showToast('无法访问剪贴板，请手动复制', 'error');
+          }
+        };
+
+        const runRepair = async () => {
+          if (repairingLinks.value) return;
+          repairingLinks.value = true;
+          try {
+            const res = await fetch('/api/repair', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            const data = await res.json();
+            if (data.ok) {
+              showToast(data.message || `成功修复 ${data.repaired_count || 0} 处软链接异常`);
+              await fetchData();
+            } else {
+              showToast('修复失败：' + (data.error || '未知错误'), 'error');
+            }
+          } catch (e) {
+            showToast('修复请求异常：' + e.message, 'error');
+          } finally {
+            repairingLinks.value = false;
+          }
+        };
+
+        const loadSkillTags = async (skillName) => {
+          if (!skillName) return;
+          loadingTags.value = true;
+          skillTags.value = [];
+          try {
+            const res = await fetch(`/api/tags?name=${encodeURIComponent(skillName)}`);
+            const data = await res.json();
+            if (data.ok && Array.isArray(data.available_tags)) {
+              skillTags.value = data.available_tags;
+            } else {
+              skillTags.value = [];
+            }
+          } catch (e) {
+            skillTags.value = [];
+          } finally {
+            loadingTags.value = false;
+          }
+        };
+
+        const tagStable = async (skillName) => {
+          if (!requireWrite()) return;
+          if (!window.confirm(`确认将 ${skillName} 标记为稳定版本（tag-stable）吗？`)) return;
+          taggingStable.value = true;
+          try {
+            const res = await fetch('/api/tag-stable', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: skillName, push: false })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              showToast(data.message || `已为 ${skillName} 成功打标稳定版本！`);
+              if (activeSkill.value && activeSkill.value.name === skillName) {
+                activeSkill.value.version_state = 'stable';
+              }
+              await loadSkillTags(skillName);
+              await fetchData();
+            } else {
+              showToast('打标失败：' + (data.error || '未知错误'), 'error');
+            }
+          } catch (e) {
+            showToast('打标请求异常：' + e.message, 'error');
+          } finally {
+            taggingStable.value = false;
+          }
+        };
+
+        const rollbackToTag = async (skillName, tag) => {
+          if (!requireWrite()) return;
+          if (!window.confirm(`警告：确认将 ${skillName} 回退到稳定版本 ${tag} 吗？\n这将撤销后续改动并生成独立提交。`)) return;
+          try {
+            const res = await fetch('/api/rollback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: skillName, tag })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              showToast(data.message || `已成功将 ${skillName} 回退到 ${tag}`);
+              await fetchData();
+              if (activeSkill.value) {
+                activeSkill.value = skills.value.find(s => s.name === skillName) || null;
+              }
+            } else {
+              showToast('回退失败：' + (data.error || '未知错误'), 'error');
+            }
+          } catch (e) {
+            showToast('回退请求异常：' + e.message, 'error');
+          }
+        };
+
         const openDetail = (s) => {
           activeSkill.value = s;
+          if (s && s.name) {
+            loadSkillTags(s.name);
+          }
         };
 
         const submitBatchSave = async () => {
@@ -1419,6 +1715,19 @@
           viewMode,
           searchQuery,
           filterAgent,
+          filterStatus,
+          dependencies,
+          repairableCount,
+          updatableCount,
+          problemCount,
+          repairingLinks,
+          runRepair,
+          copyCommand,
+          skillTags,
+          loadingTags,
+          taggingStable,
+          tagStable,
+          rollbackToTag,
           selectedSkills,
           activeSkill,
           activeChangelog,
