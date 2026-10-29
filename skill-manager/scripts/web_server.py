@@ -32,8 +32,15 @@ AGENT_DISPLAY_MAP = {
     "claude-code": "Claude Code",
     "cursor": "Cursor",
     "grok": "Grok",
+    "antigravity": "Antigravity",
 }
 DISPLAY_AGENT_MAP = {v: k for k, v in AGENT_DISPLAY_MAP.items()}
+
+
+def check_runtime_dependencies() -> dict[str, bool]:
+    import shutil
+    dependencies = ["python3", "git", "dws", "claude", "node"]
+    return {dep: bool(shutil.which(dep)) for dep in dependencies}
 
 
 def get_git_status() -> dict[str, Any]:
@@ -348,8 +355,22 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
                 "groups": list(groups_dict.values()),
                 "audit": audit_res,
                 "git": git_info,
+                "dependencies": check_runtime_dependencies(),
                 "total": len(skills),
             })
+            return
+
+        if path == "/api/tags":
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            name = query.get("name", [""])[0]
+            if not name:
+                self.send_json({"ok": False, "error": "缺少 skill 名称"}, HTTPStatus.BAD_REQUEST)
+                return
+            try:
+                tags_res = skill_ops.rollback_skill(CANONICAL_ROOT, name)
+                self.send_json(tags_res)
+            except Exception as e:
+                self.send_json({"ok": False, "error": str(e)}, HTTPStatus.BAD_REQUEST)
             return
 
         if path == "/api/git-status":
@@ -363,7 +384,10 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
             return
         path = urllib.parse.urlparse(self.path).path
         read_paths = {"/api/check-update", "/api/check-group-update"}
-        write_paths = {"/api/upgrade-skill", "/api/upgrade-group", "/api/batch-save", "/api/git-push"}
+        write_paths = {
+            "/api/upgrade-skill", "/api/upgrade-group", "/api/batch-save",
+            "/api/git-push", "/api/repair", "/api/tag-stable", "/api/rollback"
+        }
         if path not in read_paths | write_paths:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
@@ -411,6 +435,20 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
                 if not isinstance(updates, list) or not updates or len(updates) > 100 or any(not isinstance(u, dict) for u in updates):
                     raise ValueError("updates 必须为 1 至 100 项对象列表")
                 self.send_json(skill_ops.change_agents(CANONICAL_ROOT, updates))
+            elif path == "/api/repair":
+                self.send_json(skill_ops.repair(CANONICAL_ROOT))
+            elif path == "/api/tag-stable":
+                name = payload.get("name", "")
+                if not name:
+                    raise ValueError("缺少 skill 名称")
+                push = bool(payload.get("push", False))
+                self.send_json(skill_ops.tag_stable(CANONICAL_ROOT, name, push=push))
+            elif path == "/api/rollback":
+                name = payload.get("name", "")
+                if not name:
+                    raise ValueError("缺少 skill 名称")
+                tag = payload.get("tag", "")
+                self.send_json(skill_ops.rollback_skill(CANONICAL_ROOT, name, tag=tag))
             else:
                 self.send_json(skill_ops.push_backup(CANONICAL_ROOT))
         except Exception as exc:

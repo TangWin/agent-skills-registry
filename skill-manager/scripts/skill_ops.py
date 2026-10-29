@@ -54,11 +54,18 @@ def row_for(root: Path, name: str) -> dict[str, Any]:
 
 
 def source_for(row: dict[str, Any]) -> tuple[str, str]:
-    match = re.search(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)", row.get("GitHub或官网", ""))
+    source_val = row.get("GitHub或官网", "")
+    notes = row.get("安装或更新说明", "")
+    if source_val.startswith("local:") or "本地开发源:" in notes:
+        m = re.search(r"local:([^\s)]+)", source_val)
+        if not m:
+            m = re.search(r"本地开发源:\s*`?([^\s`)]+)`?", notes)
+        if m:
+            return f"local:{m.group(1)}", ""
+    match = re.search(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)", source_val)
     if not match:
         raise ValueError("来源没有明确 GitHub 仓库，无法自动判断")
     repo = match.group(1).removesuffix(".git")
-    notes = row.get("安装或更新说明", "")
     sub = re.search(r"仓库子目录\s*`([^`]+)`", notes)
     if sub:
         subpath = sub.group(1)
@@ -177,8 +184,29 @@ def prepare(root: Path, name: str) -> dict[str, Any]:
     target = checked_target(root, row)
     repo, subpath = source_for(row)
     lock = lock_record(root, name)
-    baseline = base_revision(row, lock)
     local_hash = audit.folder_hash(target)
+    if repo.startswith("local:"):
+        local_dir = Path(repo.removeprefix("local:")).expanduser().resolve()
+        if not local_dir.is_dir():
+            raise ValueError(f"本地开发目录不存在: {local_dir}")
+        validate_tree(local_dir)
+        target_hash = audit.folder_hash(local_dir)
+        has_update = local_hash != target_hash
+        return {
+            "ok": True, "name": name, "repo": repo, "subpath": "",
+            "current_version": "local", "latest_version": f"local-{datetime.now().strftime('%Y%m%d')}",
+            "has_update": has_update,
+            "status": "updatable" if has_update else "latest",
+            "local_hash": local_hash, "target_hash": target_hash,
+            "manifest_hash": hashlib.sha256((root / "SKILLS.md").read_bytes()).hexdigest(),
+            "diff_summary": {"ok": True, "base_version": "local", "target_version": "local-latest",
+                             "diff_stat": "本地源内容存在变更" if has_update else "该 skill 内容没有变化",
+                             "commits": [], "summary_bullets": ["本地工作区差异比对"],
+                             "patch": "本地工作区文件同步", "truncated": False,
+                             "patch_hash": ""},
+            "review_required": []
+        }
+    baseline = base_revision(row, lock)
     if lock and (lock.get("repo"), lock.get("subpath")) != (repo, subpath):
         raise ValueError("清单来源与锁定记录不一致")
     with checkout(repo) as (clone, commit):
@@ -341,6 +369,11 @@ def restore_transaction(root: Path) -> None:
         if target.exists():
             shutil.rmtree(target)
         os.replace(backup, target)
+    elif target.exists():
+        if target.is_symlink():
+            target.unlink()
+        elif target.is_dir():
+            shutil.rmtree(target)
     atomic_write(root / "SKILLS.md", (transaction / "manifest").read_bytes())
     lock = root / state["lock"]
     if (transaction / "lock").exists():
@@ -493,8 +526,8 @@ def change_agents(root: Path, updates: list[dict[str, Any]]) -> dict[str, Any]:
         return {"ok": True, "updated_count": len(completed), "completed": completed, "audit": audit.inspect()}
 
 
-def push_backup(root: Path) -> dict[str, Any]:
-    with exclusive(root):
+def push_backup(root: Path, *, _locked: bool = False) -> dict[str, Any]:
+    with nullcontext() if _locked else exclusive(root):
         preflight(root)
         if git(root, "remote", "get-url", "origin") != BACKUP_REMOTE or git(root, "remote", "get-url", "--push", "--all", "origin") != BACKUP_REMOTE:
             raise ValueError("推送地址与登记的私有备份不一致")
@@ -522,19 +555,369 @@ def push_backup(root: Path) -> dict[str, Any]:
         return {"ok": True, "output": output or "备份推送完成；不代表候选版本已稳定"}
 
 
+def append_row(root: Path, row_data: dict[str, str]) -> None:
+    path = root / "SKILLS.md"
+    content = path.read_text(encoding="utf-8")
+    lines = content.splitlines(keepends=True)
+    insert_idx = -1
+    in_table = False
+    for idx, line in enumerate(lines):
+        text = line.strip()
+        if text == "## 已纳管":
+            in_table = True
+            continue
+        if in_table and text.startswith("## "):
+            insert_idx = idx - 1
+            break
+        if in_table and text.startswith("|"):
+            insert_idx = idx
+    if insert_idx == -1:
+        raise ValueError("未找到已纳管表格插入点")
+    cols = ["名称", "唯一维护目录", "GitHub或官网", "简介", "当前版本、commit 或锁定哈希", "安装或更新说明", "适用 Agent", "最后检查"]
+    row_line = "| " + " | ".join(row_data.get(c, "") for c in cols) + " |\n"
+    lines.insert(insert_idx + 1, row_line)
+    atomic_write(path, "".join(lines).encode("utf-8"))
+
+
+def repair(root: Path) -> dict[str, Any]:
+    rep = audit.inspect()
+    actions = audit.repair_links(rep)
+    return {
+        "ok": True,
+        "repaired_count": len(actions),
+        "actions": actions,
+        "message": f"成功修复 {len(actions)} 处软链接异常" if actions else "无需要修复的软链接异常"
+    }
+
+
+def tag_stable(root: Path, name: str, *, push: bool = False) -> dict[str, Any]:
+    with exclusive(root):
+        preflight(root)
+        lock = lock_record(root, name)
+        row = row_for(root, name)
+        version_cell = row.get("当前版本、commit 或锁定哈希", "")
+        v_match = re.search(r"v?([0-9]+\.[0-9]+(?:\.[0-9]+)?)", version_cell)
+        if v_match:
+            version_str = v_match.group(1)
+        elif lock and lock.get("commit"):
+            version_str = lock["commit"][:7]
+        else:
+            matches = re.findall(r"([0-9a-f]{7,40})", version_cell)
+            version_str = matches[0][:7] if matches else datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y%m%d")
+
+        tag_name = f"stable/{name}/{version_str}"
+        existing = git(root, "tag", "--list", tag_name)
+        if existing:
+            tag_commit = git(root, "rev-parse", f"{tag_name}^{{commit}}")
+            head_commit = git(root, "rev-parse", "HEAD")
+            if tag_commit != head_commit:
+                raise ValueError(f"标签 {tag_name} 已存在且指向不同提交 {tag_commit[:7]}")
+            tag_created = False
+        else:
+            git(root, "tag", "-a", tag_name, "-m", f"stable: {name} {version_str}")
+            tag_created = True
+
+        push_output = ""
+        if push:
+            push_res = push_backup(root, _locked=True)
+            push_output = push_res.get("output", "")
+            git(root, "push", "origin", tag_name)
+
+        return {
+            "ok": True,
+            "tag": tag_name,
+            "created": tag_created,
+            "version": version_str,
+            "message": f"已成功标记稳定标签 {tag_name}" + (" 并推送到远端备份" if push else "")
+        }
+
+
+def rollback_skill(root: Path, name: str, tag: str | None = None) -> dict[str, Any]:
+    with exclusive(root):
+        preflight(root)
+        tags = [t for t in git(root, "tag", "--list", f"stable/{name}/*").splitlines() if t]
+        if not tags:
+            raise ValueError(f"{name} 没有可用的稳定标签 (stable/{name}/*)")
+        if not tag:
+            tag_list = []
+            for t in sorted(tags, reverse=True):
+                info = git(root, "log", "-1", "--format=%ci (%h)", t)
+                tag_list.append({"tag": t, "info": info})
+            return {"ok": True, "name": name, "available_tags": tag_list}
+
+        if tag not in tags:
+            raise ValueError(f"指定的标签 {tag} 不在可用稳定标签列表中")
+
+        row = row_for(root, name)
+        target = row["_path"]
+        relative = str(target.relative_to(root))
+        lock_rel = f".skill-locks/{name}.json"
+        lock_path = root / lock_rel
+
+        head = git(root, "rev-parse", "HEAD")
+        transaction = git_dir(root) / "skill-manager-transaction"
+        transaction.mkdir()
+        message = f"rollback: {name} to {tag}"
+        state = {"head": head, "target": relative, "lock": lock_rel, "message": message}
+        try:
+            shutil.copyfile(root / "SKILLS.md", transaction / "manifest")
+            if lock_path.exists():
+                shutil.copyfile(lock_path, transaction / "lock")
+            shutil.copytree(target, transaction / "old")
+            atomic_write(transaction / "state.json", json.dumps(state).encode())
+
+            shutil.rmtree(target)
+            git(root, "checkout", tag, "--", relative)
+
+            try:
+                tagged_lock = git(root, "show", f"{tag}:{lock_rel}")
+                atomic_write(lock_path, tagged_lock.encode("utf-8"))
+            except subprocess.SubprocessError:
+                lock_path.unlink(missing_ok=True)
+
+            v_from_tag = tag.removeprefix(f"stable/{name}/")
+            rewrite_row(root, name, {
+                "当前版本、commit 或锁定哈希": f"`{v_from_tag}` (回退)",
+                "最后检查": datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+            })
+            assert_target_audit(name)
+            commit_paths(root, [relative, "SKILLS.md", lock_rel], message)
+        except BaseException:
+            if (transaction / "state.json").exists():
+                restore_transaction(root)
+            else:
+                shutil.rmtree(transaction)
+            raise
+        shutil.rmtree(transaction)
+        return {"ok": True, "name": name, "rolled_back_to": tag, "message": f"{name} 已成功回退到 {tag} 并独立提交"}
+
+
+def _execute_install(root: Path, head: str, name: str, source_dir: Path, repo: str, subpath: str,
+                     commit: str, target_hash: str, agents_in: list[str] | None, desc: str,
+                     notes: str, is_git: bool) -> dict[str, Any]:
+    target = root / name
+    if target.exists():
+        raise ValueError(f"目标目录已存在：{target}")
+
+    applicable_agents = agents_in or ["Codex", "Claude Code", "Cursor", "Grok", "Antigravity"]
+    if any(a not in audit.AGENT_NAMES for a in applicable_agents):
+        raise ValueError("存在未知适用 Agent")
+
+    transaction = git_dir(root) / "skill-manager-transaction"
+    transaction.mkdir()
+    lock_rel = f".skill-locks/{name}.json"
+    lock_path = root / lock_rel
+    message = f"install: {name} {commit[:7] if is_git else commit} (candidate)"
+    state = {"head": head, "target": name, "lock": lock_rel, "message": message}
+
+    try:
+        shutil.copyfile(root / "SKILLS.md", transaction / "manifest")
+        atomic_write(transaction / "state.json", json.dumps(state).encode())
+
+        shutil.copytree(source_dir, target, ignore=shutil.ignore_patterns(".git", "__pycache__", ".DS_Store"))
+
+        record = {
+            "schema": 1,
+            "repo": repo,
+            "subpath": subpath,
+            "commit": commit if is_git else "",
+            "content_hash": target_hash,
+            "status": "candidate",
+            "management": "git" if is_git else "local",
+            "installed_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+        }
+        atomic_write(lock_path, (json.dumps(record, ensure_ascii=False, indent=2) + "\n").encode())
+
+        agent_keys = {audit.AGENT_NAMES[a] for a in applicable_agents}
+        for agent_key, link_root in audit.LINK_ROOTS.items():
+            if agent_key in agent_keys:
+                link = link_root / name
+                link.parent.mkdir(parents=True, exist_ok=True)
+                if not link.exists() and not link.is_symlink():
+                    link.symlink_to(os.path.relpath(target, link.parent))
+
+        if not desc:
+            skill_md = (target / "SKILL.md").read_text(encoding="utf-8")
+            desc_m = re.search(r"^description:\s*(.+)$", skill_md, re.M)
+            desc = desc_m.group(1).strip()[:60] if desc_m else "用户级技能"
+
+        today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+        display_path = f"~/.agents/skills/{name}" if root == Path.home() / ".agents" / "skills" else str(target)
+        row_data = {
+            "名称": name,
+            "唯一维护目录": f"`{display_path}`",
+            "GitHub或官网": f"[{repo}]({repo})" if repo.startswith("http") else repo,
+            "简介": desc,
+            "当前版本、commit 或锁定哈希": f"`{commit}`",
+            "安装或更新说明": notes,
+            "适用 Agent": "、".join(applicable_agents),
+            "最后检查": today
+        }
+        append_row(root, row_data)
+
+        assert_target_audit(name)
+        commit_paths(root, [name, "SKILLS.md", lock_rel], message, snapshot=(name, target_hash))
+    except BaseException:
+        if (transaction / "state.json").exists():
+            restore_transaction(root)
+        else:
+            shutil.rmtree(transaction)
+        raise
+    shutil.rmtree(transaction)
+    return {"ok": True, "name": name, "version": commit, "message": f"{name} 已成功安装并生成独立候选提交"}
+
+
+def install_skill(root: Path, source: str, *, subpath: str = "", name: str | None = None,
+                  agents: list[str] | None = None, desc: str = "", notes: str = "") -> dict[str, Any]:
+    with exclusive(root):
+        head = preflight(root, require_backup=False)
+        is_local = source.startswith("local:") or (Path(source).expanduser().is_dir() if ":" not in source else False)
+        if is_local:
+            local_path = Path(source.removeprefix("local:")).expanduser().resolve()
+            if not local_path.is_dir():
+                raise ValueError(f"本地目录不存在: {local_path}")
+            validate_tree(local_path)
+            skill_text = (local_path / "SKILL.md").read_text(encoding="utf-8")
+            front = skill_text.split("---", 2)[1]
+            m_name = re.search(r"^name:\s*([a-z0-9][a-z0-9_-]*)", front, re.M)
+            final_name = name or (m_name.group(1) if m_name else None)
+            if not final_name:
+                raise ValueError("无法解析 skill 名称")
+            target_hash = audit.folder_hash(local_path)
+            if not target_hash:
+                raise ValueError("无法计算源目录哈希")
+            commit = f"local-{datetime.now(ZoneInfo('Asia/Shanghai')).strftime('%Y%m%d')}"
+            repo_display = f"local:{local_path}"
+            install_note = notes or "本地工作区源安装；变更由本地同步更新"
+            return _execute_install(root, head, final_name, local_path, repo_display, subpath, commit,
+                                    target_hash, agents, desc, install_note, is_git=False)
+        else:
+            repo = source.removeprefix("https://github.com/").removesuffix(".git")
+            with checkout(repo) as (clone, rev_commit):
+                src_tree = clone / subpath if subpath else clone
+                validate_tree(src_tree)
+                skill_text = (src_tree / "SKILL.md").read_text(encoding="utf-8")
+                front = skill_text.split("---", 2)[1]
+                m_name = re.search(r"^name:\s*([a-z0-9][a-z0-9_-]*)", front, re.M)
+                final_name = name or (m_name.group(1) if m_name else None)
+                if not final_name:
+                    raise ValueError("无法解析 skill 名称")
+                target_hash = audit.folder_hash(src_tree)
+                if not target_hash:
+                    raise ValueError("无法计算源目录哈希")
+                repo_url = f"https://github.com/{repo}"
+                repo_note = notes or (f"仓库子目录 `{subpath}`；按子目录差异更新" if subpath else "仓库根目录 skill；按版本发布或 commit 更新")
+                return _execute_install(root, head, final_name, src_tree, repo_url, subpath, rev_commit,
+                                        target_hash, agents, desc, repo_note, is_git=True)
+
+
+def register_skill(root: Path, name: str, target_path: str, *, source: str = "本地自建",
+                   description: str = "", version: str = "0.1.0",
+                   agents: list[str] | None = None, notes: str = "", external: bool = False) -> dict[str, Any]:
+    with exclusive(root):
+        head = preflight(root, require_backup=False)
+        target = root / name
+        p = Path(target_path).expanduser()
+
+        applicable_agents = agents or ["Codex", "Claude Code", "Cursor", "Grok", "Antigravity"]
+        if any(a not in audit.AGENT_NAMES for a in applicable_agents):
+            raise ValueError("存在未知适用 Agent")
+
+        if external:
+            if not p.exists():
+                raise ValueError(f"外部目标路径不存在: {p}")
+            if target.exists() and not target.is_symlink():
+                raise ValueError(f"目标目录已存在实体，非软链接: {target}")
+            if not target.is_symlink():
+                target.symlink_to(p)
+            management_type = "external"
+        else:
+            if not target.is_dir():
+                raise ValueError(f"受管目录不存在: {target}")
+            validate_tree(target)
+            management_type = "local"
+
+        agent_keys = {audit.AGENT_NAMES[a] for a in applicable_agents}
+        for agent_key, link_root in audit.LINK_ROOTS.items():
+            if agent_key in agent_keys:
+                link = link_root / name
+                link.parent.mkdir(parents=True, exist_ok=True)
+                if not link.exists() and not link.is_symlink():
+                    link.symlink_to(os.path.relpath(target, link.parent))
+
+        today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+        display_path = f"~/.agents/skills/{name}" if root == Path.home() / ".agents" / "skills" else str(target)
+        row_data = {
+            "名称": name,
+            "唯一维护目录": f"`{display_path}`",
+            "GitHub或官网": source,
+            "简介": description or "用户级技能",
+            "当前版本、commit 或锁定哈希": f"`{version}`",
+            "安装或更新说明": notes or ("外部自管应用安装，不在此处自动更新" if external else "本地维护"),
+            "适用 Agent": "、".join(applicable_agents),
+            "最后检查": f"{today}（{'外部自管' if external else '仅本地安装校验'}）"
+        }
+        append_row(root, row_data)
+        assert_target_audit(name)
+        commit_message = f"register: {name} {version} ({management_type})"
+        commit_paths(root, [name, "SKILLS.md"], commit_message)
+        return {"ok": True, "name": name, "message": f"{name} 已成功登记并独立提交"}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["check", "recover"])
-    parser.add_argument("name", nargs="?")
+    # 兼容位置参数调用 skill_ops.py check <name> 或 skill_ops.py recover
+    parser.add_argument("command", choices=["check", "recover", "repair", "tag-stable", "rollback", "install", "register"])
+    parser.add_argument("arg1", nargs="?", help="skill 名称、仓库地址或来源")
+    parser.add_argument("arg2", nargs="?", help="标签名或目标路径")
+    parser.add_argument("--subpath", default="", help="仓库子目录")
+    parser.add_argument("--name", help="自定义 skill 名称")
+    parser.add_argument("--agents", help="适用 Agent，顿号分隔")
+    parser.add_argument("--desc", default="", help="技能简述")
+    parser.add_argument("--notes", default="", help="安装或更新说明")
+    parser.add_argument("--version", default="0.1.0", help="版本号")
+    parser.add_argument("--source", default="本地自建", help="来源说明")
+    parser.add_argument("--external", action="store_true", help="是否为外部自管应用软链接")
+    parser.add_argument("--push", action="store_true", help="打标后同时推送到远端备份")
+
     args = parser.parse_args()
     root = audit.CANONICAL_ROOT
     try:
-        if args.command == "check":
-            result = prepare(root, args.name)
-        else:
+        cmd = args.command
+        if cmd == "check":
+            if not args.arg1:
+                raise ValueError("check 命令必须提供 skill 名称")
+            result = prepare(root, args.arg1)
+        elif cmd == "recover":
             with exclusive(root):
                 restore_transaction(root)
             result = {"ok": True, "message": "未完成事务已恢复或清理"}
+        elif cmd == "repair":
+            result = repair(root)
+        elif cmd == "tag-stable":
+            if not args.arg1:
+                raise ValueError("tag-stable 命令必须提供 skill 名称")
+            result = tag_stable(root, args.arg1, push=args.push)
+        elif cmd == "rollback":
+            if not args.arg1:
+                raise ValueError("rollback 命令必须提供 skill 名称")
+            result = rollback_skill(root, args.arg1, tag=args.arg2)
+        elif cmd == "install":
+            if not args.arg1:
+                raise ValueError("install 命令必须提供仓库名或本地路径")
+            agents = args.agents.split("、") if args.agents else None
+            result = install_skill(root, args.arg1, subpath=args.subpath, name=args.name,
+                                   agents=agents, desc=args.desc, notes=args.notes)
+        elif cmd == "register":
+            if not args.arg1 or not args.arg2:
+                raise ValueError("register 命令必须提供 skill 名称和目标路径")
+            agents = args.agents.split("、") if args.agents else None
+            result = register_skill(root, args.arg1, args.arg2, source=args.source,
+                                    description=args.desc, version=args.version,
+                                    agents=agents, notes=args.notes, external=args.external)
+        else:
+            raise ValueError(f"未知命令: {cmd}")
+
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except Exception as exc:

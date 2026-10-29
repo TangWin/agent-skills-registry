@@ -280,13 +280,13 @@
         <!-- Agent 选项卡 -->
         <div class="flex items-center bg-[var(--bg-surface-elevated)] p-1 rounded-lg border border-[var(--border-subtle)] text-xs">
           <button 
-            v-for="agent in ['All', 'Claude Code', 'Codex', 'Cursor', 'Grok']" 
+            v-for="agent in ['All', 'Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']" 
             :key="agent"
             @click="filterAgent = agent"
             class="px-2 py-1 rounded font-medium transition"
             :class="filterAgent === agent ? 'bg-[var(--accent-brand)] text-white shadow-xs' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
           >
-            {{ agent === 'All' ? '全部' : (agent === 'Claude Code' ? 'Claude' : agent) }}
+            {{ agent === 'All' ? '全部' : (agent === 'Claude Code' ? 'Claude' : (agent === 'Antigravity' ? 'Antigravity' : agent)) }}
           </button>
         </div>
       </div>
@@ -308,7 +308,7 @@
           </button>
           <div class="hidden group-hover:block absolute right-0 mt-1 w-44 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl shadow-xl z-30 py-1 text-xs">
             <button 
-              v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok']" 
+              v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']" 
               :key="ag" 
               @click="batchAddAgent(ag)"
               class="w-full text-left px-3.5 py-2 hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-between"
@@ -330,7 +330,7 @@
           </button>
           <div class="hidden group-hover:block absolute right-0 mt-1 w-44 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl shadow-xl z-30 py-1 text-xs">
             <button 
-              v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok']" 
+              v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']" 
               :key="ag" 
               @click="batchRemoveAgent(ag)"
               class="w-full text-left px-3.5 py-2 hover:bg-[var(--bg-surface-hover)] text-rose-500 hover:text-rose-600 flex items-center justify-between"
@@ -519,14 +519,14 @@
                 <td class="p-3.5 w-64">
                   <div class="flex flex-wrap gap-1">
                     <button 
-                      v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok']"
+                      v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']"
                       :key="ag"
                       @click="toggleSkillAgent(s.name, ag)"
                       class="agent-pill px-2 py-0.5 rounded-md border text-[10px] font-mono cursor-pointer flex items-center gap-1"
                       :class="getAgentPillState(s, ag).class"
                       :title="getAgentPillState(s, ag).tooltip"
                     >
-                      <span>{{ ag === 'Claude Code' ? 'Claude' : ag }}</span>
+                      <span>{{ ag === 'Claude Code' ? 'Claude' : (ag === 'Antigravity' ? 'Antigravity' : ag) }}</span>
                       <span v-if="getAgentPillState(s, ag).icon" class="text-[9px]" :class="{'opacity-80': getAgentPillState(s, ag).icon === '✓', 'text-amber-400 font-bold': getAgentPillState(s, ag).icon === '⚠️'}">{{ getAgentPillState(s, ag).icon }}</span>
                     </button>
                   </div>
@@ -684,14 +684,14 @@
               <td class="p-3.5">
                 <div class="flex flex-wrap gap-1">
                   <button 
-                    v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok']"
+                    v-for="ag in ['Claude Code', 'Codex', 'Cursor', 'Grok', 'Antigravity']"
                     :key="ag"
                     @click="toggleSkillAgent(s.name, ag)"
                     class="agent-pill px-2 py-0.5 rounded-md border text-[10px] font-mono cursor-pointer flex items-center gap-1"
                     :class="getAgentPillState(s, ag).class"
                     :title="getAgentPillState(s, ag).tooltip"
                   >
-                    <span>{{ ag === 'Claude Code' ? 'Claude' : ag }}</span>
+                    <span>{{ ag === 'Claude Code' ? 'Claude' : (ag === 'Antigravity' ? 'Antigravity' : ag) }}</span>
                     <span v-if="getAgentPillState(s, ag).icon" class="text-[9px]" :class="{'opacity-80': getAgentPillState(s, ag).icon === '✓', 'text-amber-400 font-bold': getAgentPillState(s, ag).icon === '⚠️'}">{{ getAgentPillState(s, ag).icon }}</span>
                   </button>
                 </div>
@@ -1074,7 +1074,8 @@
           'Codex': 'codex',
           'Claude Code': 'claude-code',
           'Cursor': 'cursor',
-          'Grok': 'grok'
+          'Grok': 'grok',
+          'Antigravity': 'antigravity'
         };
 
         const getAgentPillState = (skill, agentName) => {
@@ -1343,7 +1344,8 @@
               'Codex': 'codex',
               'Claude Code': 'claude-code',
               'Cursor': 'cursor',
-              'Grok': 'grok'
+              'Grok': 'grok',
+              'Antigravity': 'antigravity'
             };
 
             const updates = Object.entries(modifiedAgents.value).map(([name, agents]) => ({

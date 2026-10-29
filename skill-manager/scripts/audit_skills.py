@@ -17,6 +17,7 @@ LINK_ROOTS = {
     "codex": Path("/Users/tangw/.codex/skills"),
     "claude-code": Path("/Users/tangw/.claude/skills"),
     "cursor": Path("/Users/tangw/.cursor/skills"),
+    "antigravity": Path("/Users/tangw/.gemini/config/skills"),
 }
 LEGACY_ROOTS = {
     "cc-switch": Path("/Users/tangw/.cc-switch/skills"),
@@ -27,6 +28,7 @@ AGENT_NAMES = {
     "Claude Code": "claude-code",
     "Cursor": "cursor",
     "Grok": "grok",
+    "Antigravity": "antigravity",
 }
 IGNORED_NAMES = {".system", "skills-cursor"}
 IGNORED_PARTS = {".git", "__pycache__", ".DS_Store"}
@@ -284,6 +286,42 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def repair_links(report: dict[str, Any]) -> list[dict[str, str]]:
+    """安全自动修复 missing-link、broken-link 和 unexpected-link。"""
+    import os
+    actions: list[dict[str, str]] = []
+    canonical = skill_entries(CANONICAL_ROOT)
+    scoped_root = CANONICAL_ROOT / ".scoped"
+    if scoped_root.is_dir():
+        for scope in sorted(scoped_root.iterdir()):
+            for name, path in skill_entries(scope).items():
+                canonical[name] = path
+
+    for item in report.get("findings", []):
+        status = item["status"]
+        path = Path(item["path"])
+        name = item["name"]
+        agent = item["agent"]
+
+        if status == "missing-link" and name in canonical:
+            target = canonical[name]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists() and not path.is_symlink():
+                path.symlink_to(os.path.relpath(target, path.parent))
+                actions.append({"agent": agent, "name": name, "status": "repaired-missing-link", "path": str(path), "target": str(target)})
+
+        elif status == "broken-link" and path.is_symlink() and not path.exists():
+            path.unlink()
+            actions.append({"agent": agent, "name": name, "status": "removed-broken-link", "path": str(path), "target": ""})
+
+        elif status == "unexpected-link" and path.is_symlink() and name in canonical:
+            if path.resolve(strict=False) == canonical[name].resolve(strict=False):
+                path.unlink()
+                actions.append({"agent": agent, "name": name, "status": "removed-unexpected-link", "path": str(path), "target": ""})
+
+    return actions
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="输出 JSON")
@@ -292,12 +330,28 @@ def main() -> int:
         action="store_true",
         help="存在登记、适用范围或加载路径问题时返回非零状态",
     )
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="自动修复可安全处理的软链接问题（漏链、死链、无效链）",
+    )
     args = parser.parse_args()
     report = inspect()
+    if args.fix:
+        actions = repair_links(report)
+        if actions:
+            # 修复后重新审计
+            report = inspect()
+            report["repaired_actions"] = actions
+
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
         print(render_markdown(report))
+        if args.fix and "repaired_actions" in report:
+            print("\n## 自动修复项")
+            for act in report["repaired_actions"]:
+                print(f"- [{act['status']}] {act['agent']} -> {act['name']} ({act['path']})")
 
     if args.strict and any(item["status"] in PROBLEM_STATUSES for item in report["findings"]):
         return 1

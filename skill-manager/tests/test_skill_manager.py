@@ -443,6 +443,60 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(ops.git(self.root, "ls-remote", "origin", "refs/heads/main").split()[0], ops.git(self.root, "rev-parse", "HEAD"))
         self.assertEqual(ops.git(self.root, "tag", "--list", "stable/*"), "")
 
+    def test_repair_links_recovers_missing_and_cleans_broken(self):
+        link_dir = self.base / "claude-skills"
+        link_dir.mkdir()
+        ops.rewrite_row(self.root, "alpha", {"适用 Agent": "Codex、Claude Code、Grok"})
+        ops.git(self.root, "add", "SKILLS.md")
+        ops.git(self.root, "commit", "-m", "update alpha agents")
+        broken = link_dir / "broken"
+        broken.symlink_to(self.root / "nonexistent")
+        with patch.object(audit, "LINK_ROOTS", {"claude-code": link_dir}):
+            rep = audit.inspect()
+            self.assertTrue(any(f["status"] == "missing-link" for f in rep["findings"]))
+            self.assertTrue(any(f["status"] == "broken-link" for f in rep["findings"]))
+            res = ops.repair(self.root)
+            self.assertTrue(res["ok"])
+            self.assertEqual(res["repaired_count"], 2)
+            self.assertTrue((link_dir / "alpha").is_symlink())
+            self.assertFalse(broken.exists())
+
+    def test_tag_stable_and_rollback(self):
+        self.upstream_change()
+        plan = ops.prepare(self.root, "alpha")
+        ops.apply(self.root, plan)
+        tag_res = ops.tag_stable(self.root, "alpha", push=True)
+        self.assertTrue(tag_res["ok"])
+        tag_name = tag_res["tag"]
+        self.assertTrue(tag_name.startswith("stable/alpha/"))
+
+        self.upstream_change(("alpha",))
+        plan2 = ops.prepare(self.root, "alpha")
+        ops.apply(self.root, plan2)
+
+        list_res = ops.rollback_skill(self.root, "alpha")
+        self.assertTrue(any(t["tag"] == tag_name for t in list_res["available_tags"]))
+
+        rb_res = ops.rollback_skill(self.root, "alpha", tag=tag_name)
+        self.assertTrue(rb_res["ok"])
+        self.assertEqual(rb_res["rolled_back_to"], tag_name)
+        self.assertIn("rollback: alpha to", ops.git(self.root, "log", "-1", "--format=%s"))
+
+    def test_install_local_skill(self):
+        local_dev = self.base / "my-local-skill"
+        local_dev.mkdir()
+        (local_dev / "SKILL.md").write_text("---\nname: my-local\ndescription: local skill for test\n---\nHello local\n")
+        link_dir = self.base / "antigravity-skills"
+        link_dir.mkdir()
+        with patch.object(audit, "LINK_ROOTS", {"antigravity": link_dir}):
+            res = ops.install_skill(self.root, f"local:{local_dev}", agents=["Codex", "Antigravity", "Grok"])
+            self.assertTrue(res["ok"])
+            self.assertEqual(res["name"], "my-local")
+            self.assertTrue((self.root / "my-local" / "SKILL.md").is_file())
+            self.assertTrue((self.root / ".skill-locks" / "my-local.json").is_file())
+            self.assertTrue((link_dir / "my-local").is_symlink())
+            self.assertIn("install: my-local", ops.git(self.root, "log", "-1", "--format=%s"))
+
 
 
 class HTTPTest(unittest.TestCase):
@@ -469,7 +523,7 @@ class HTTPTest(unittest.TestCase):
             self.assertEqual(h.send_error.call_args.args[0], 403)
 
     def test_read_only_rejects_all_write_routes(self):
-        for path in ("/api/git-push", "/api/batch-save", "/api/upgrade-skill", "/api/upgrade-group"):
+        for path in ("/api/git-push", "/api/batch-save", "/api/upgrade-skill", "/api/upgrade-group", "/api/repair", "/api/tag-stable", "/api/rollback"):
             h = self.handler(path)
             h.do_POST()
             self.assertEqual(h.send_json.call_args.args[1], 403)

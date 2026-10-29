@@ -1,6 +1,6 @@
 ---
 name: skill-manager
-description: 统一管理本机用户级 Agent skills。用户要求盘点、登记、安装、迁移、检查更新、更新或修复 Codex、Claude Code、Cursor、Grok 的 skills，或提到 SKILLS.md、skill 来源、重复副本、软链接和版本漂移时使用。不管理 plugins、Agent 内置 skills 或项目级 skills。
+description: 统一管理本机用户级 Agent skills。用户要求盘点、登记、安装、迁移、检查更新、更新或修复 Codex、Claude Code、Cursor、Grok、Antigravity 的 skills，或提到 SKILLS.md、skill 来源、重复副本、软链接和版本漂移时使用。不管理 plugins、Agent 内置 skills 或项目级 skills。
 ---
 
 # Skill Manager
@@ -15,9 +15,10 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 - Codex 与 Grok 直接读取 `/Users/tangw/.agents/skills`。
 - Claude Code 使用 `/Users/tangw/.claude/skills/<name>` 软链接。
 - Cursor 使用 `/Users/tangw/.cursor/skills/<name>` 软链接。
+- Antigravity 使用 `/Users/tangw/.gemini/config/skills/<name>` 软链接。
 - CC Switch 只管理模型和供应商；`~/.cc-switch/skills` 仅作为历史残留检查，不是合法 skill 来源。
 - 通用 skill 放在 `/Users/tangw/.agents/skills/<name>`；工具专属 skill 放在 `/Users/tangw/.agents/skills/.scoped/<scope>/<name>`，再按“适用 Agent”链接到工具目录。
-- `SKILLS.md` 的“适用 Agent”决定 Claude Code、Cursor，以及 scoped Codex skill 是否应创建软链接。Grok 当前只直读通用目录，暂不支持 scoped skill。
+- `SKILLS.md` 的“适用 Agent”决定 Claude Code、Cursor、Antigravity，以及 scoped Codex skill 是否应创建软链接。Grok 当前只直读通用目录，暂不支持 scoped skill。
 - 不覆盖来源不明、本地已修改或同名不同内容的目录。
 - 不向版本仓库提交凭据、账号、缓存、会话、`.env`、`config.env`、私钥或证书私钥。
 - 所有联网检查遵守当前 Agent 的联网 skill、权限和安全规则。
@@ -34,9 +35,16 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 
 ## 功能入口
 
-- 命令行：`audit_skills.py` 只读审计；`skill_ops.py check <skill>` 检查更新；`skill_ops.py recover` 恢复更新或启用范围变更留下的事务。
-- Web 控制台：检查更新；开启写入模式后，可确认更新、修改 Agent 启用范围和推送备份。更新及启用范围变更使用脚本事务保护。
-- 安装、登记、迁移、标记稳定和回退：由 Agent 按下文流程执行，目前没有对应的完整 CLI/Web 事务入口。执行前明确路径与差异，准备可恢复备份，不得假定 `recover` 能恢复这些手工操作。
+- 命令行：
+  - `audit_skills.py`：只读审计；加 `--fix` 自动修复可安全处理的软链接问题（漏链、死链、无效链）。
+  - `skill_ops.py repair`：一键安全修复各 Agent 目录下的软链接异常。
+  - `skill_ops.py check <skill>`：检查更新（支持 GitHub 仓库、monorepo 子目录及本地开发工作区源 `local:<path>`）。
+  - `skill_ops.py install <source>`：规范安装新技能（支持 GitHub 仓库或本地目录），校验后写入锁定、更新清单、创建软链接并独立提交。
+  - `skill_ops.py register <name> <target>`：规范登记本地已存在目录或外部 App 自管软链接。
+  - `skill_ops.py tag-stable <skill> [--push]`：为试用合格的技能标记稳定标签（`stable/<skill>/<version>`），可选推送到远端备份。
+  - `skill_ops.py rollback <skill> [tag]`：列出或安全回退到历史稳定标签并独立提交。
+  - `skill_ops.py recover`：恢复更新、安装或启用范围变更留下的中断事务。
+- Web 控制台：检查更新；开启写入模式后，可确认更新、修改 Agent 启用范围（含 Antigravity）、一键修复软链接、打标与回退、推送备份。全部变更均受进程互斥锁与脚本事务保护。
 
 ## 首次盘点或审计
 
@@ -132,7 +140,7 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check <sk
 
 - `SKILLS.md` 主表只放已纳管且唯一维护目录真实存在的 skills。
 - 工具专属普通 skill 也必须登记，唯一维护目录填写 `.scoped` 下的真实路径；plugins 不登记。
-- “适用 Agent”必须使用 `Codex`、`Claude Code`、`Cursor`、`Grok`，多个值用中文顿号分隔；审计脚本据此校验加载路径。
+- “适用 Agent”必须使用 `Codex`、`Claude Code`、`Cursor`、`Grok`、`Antigravity`，多个值用中文顿号分隔；审计脚本据此校验加载路径。
 - 来源不明写“待确认”，不得猜测官网、GitHub、版本或兼容性。
 - 内容冲突和未纳管项写入“待确认纳管”区，不混入主表。
 - 安装或更新必须在同一操作中同步修改清单。
