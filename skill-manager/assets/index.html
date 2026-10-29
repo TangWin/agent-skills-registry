@@ -199,6 +199,19 @@
           <span>修复软链接 ({{ repairableCount }})</span>
         </button>
 
+        <!-- 一键快速检查全量更新按钮 -->
+        <button 
+          @click="checkAllUpdates"
+          :disabled="checkingAll"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold shadow-xs transition"
+          title="并发嗅探所有已绑定上游仓库的最新 HEAD 版本"
+        >
+          <svg class="w-3.5 h-3.5 text-[var(--accent-brand)]" :class="{'animate-spin': checkingAll}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          <span>{{ checkingAll ? '全站检查中...' : '⚡️ 检查全部更新' }}</span>
+        </button>
+
         <!-- CLI 运行依赖健康度 -->
         <div v-if="dependencies && Object.keys(dependencies).length" class="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)] shadow-sm">
           <span class="text-[var(--text-secondary)]">CLI:</span>
@@ -1105,6 +1118,7 @@
         const upgradingGroupId = ref(null);
         const checkingSkillName = ref(null);
         const upgradingSkillName = ref(null);
+        const checkingAll = ref(false);
         
         const viewMode = ref('grouped'); // 'grouped' | 'flat'
         const searchQuery = ref('');
@@ -1353,6 +1367,35 @@
             showToast('套件检查异常：' + (e.message || '网络错误'), 'error');
           } finally {
             checkingGroupId.value = null;
+          }
+        };
+
+        const checkAllUpdates = async () => {
+          if (checkingAll.value) return;
+          checkingAll.value = true;
+          showToast('正在快速嗅探所有受管技能的最新版本...');
+          try {
+            const res = await fetch('/api/check-all', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            const data = await res.json();
+            if (data.ok && data.results) {
+              updateResults.value = { ...updateResults.value, ...data.results };
+              const count = data.updatable_count || 0;
+              if (count > 0) {
+                showToast(`检查完成！发现 ${count} 个技能有新版本可用！`, 'success');
+              } else {
+                showToast('检查完成！所有受管技能均已是最新版本。', 'success');
+              }
+            } else {
+              showToast('检查失败：' + (data.error || '未知错误'), 'error');
+            }
+          } catch (e) {
+            showToast('请求异常：' + e.message, 'error');
+          } finally {
+            checkingAll.value = false;
           }
         };
 
@@ -1712,6 +1755,8 @@
           upgradingGroupId,
           checkingSkillName,
           upgradingSkillName,
+          checkingAll,
+          checkAllUpdates,
           viewMode,
           searchQuery,
           filterAgent,

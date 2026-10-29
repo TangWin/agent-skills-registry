@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import secrets
@@ -228,7 +229,67 @@ def parse_skills_full() -> list[dict[str, Any]]:
 
 def check_skill_update(skill_name: str) -> dict[str, Any]:
     try:
-        return skill_ops.prepare(CANONICAL_ROOT, skill_name)
+        row = skill_ops.row_for(CANONICAL_ROOT, skill_name)
+        source_val = row.get("GitHub或官网", "")
+        notes = row.get("安装或更新说明", "")
+        is_local = source_val.startswith("local:") or "本地开发源:" in notes
+        is_github = "github.com/" in source_val
+        if not is_local and not is_github:
+            return {
+                "ok": True,
+                "name": skill_name,
+                "status": "unsupported",
+                "message": "未绑定远程 GitHub 上游，当前仅在本地维护",
+                "has_update": False,
+                "no_remote": True
+            }
+
+        if is_local:
+            return skill_ops.prepare(CANONICAL_ROOT, skill_name)
+
+        repo, subpath = skill_ops.source_for(row)
+        lock = skill_ops.lock_record(CANONICAL_ROOT, skill_name)
+        baseline = skill_ops.base_revision(row, lock)
+
+        remote_head = skill_ops.probe_remote_head(repo)
+        if not remote_head:
+            return {
+                "ok": False,
+                "name": skill_name,
+                "status": "unknown",
+                "error": "连接 GitHub 超时，未能获取最新版本",
+                "has_update": False
+            }
+
+        manifest_hash = hashlib.sha256((CANONICAL_ROOT / "SKILLS.md").read_bytes()).hexdigest()
+        local_hash = audit_skills.folder_hash(skill_ops.checked_target(CANONICAL_ROOT, row))
+
+        if remote_head.startswith(baseline) or baseline.startswith(remote_head):
+            return {
+                "ok": True,
+                "name": skill_name,
+                "repo": repo,
+                "subpath": subpath,
+                "current_version": baseline[:8] if len(baseline) >= 40 else baseline,
+                "latest_version": remote_head[:8] if len(remote_head) >= 40 else remote_head,
+                "has_update": False,
+                "status": "latest",
+                "message": f"已是最新版本 ({remote_head[:8]})",
+                "local_hash": local_hash,
+                "manifest_hash": manifest_hash,
+                "diff_summary": {
+                    "ok": True,
+                    "base_version": baseline,
+                    "target_version": remote_head,
+                    "diff_stat": "已是最新版本",
+                    "commits": [],
+                    "summary_bullets": ["当前版本与上游保持一致"],
+                    "patch": "",
+                    "truncated": False
+                }
+            }
+        else:
+            return skill_ops.prepare(CANONICAL_ROOT, skill_name)
     except Exception as exc:
         return {"ok": False, "status": "unknown", "error": str(exc)}
 
@@ -237,6 +298,7 @@ def check_group_update(group_id: str) -> dict[str, Any]:
     skills = [s for s in parse_skills_full() if s["group_id"] == group_id]
     if not skills:
         return {"ok": False, "error": "套件不存在"}
+
     results = [check_skill_update(s["name"]) for s in skills]
     failures = [r for r in results if not r["ok"]]
     plans = [r for r in results if r.get("has_update")]
@@ -245,8 +307,46 @@ def check_group_update(group_id: str) -> dict[str, Any]:
             "error": "; ".join(r["error"] for r in failures), "plans": plans,
             "updatable_skills": [r["name"] for r in plans], "results": results,
             "diff_summary": {"ok": not failures, "commits": [],
-                             "summary_bullets": [f'{r["name"]}: {r["latest_version"]}' for r in plans],
+                             "summary_bullets": [f'{r["name"]}: {r.get("latest_version", "最新")}' for r in plans],
                              "diff_stat": f"{len(plans)} 个 skill 内容变化，{len(failures)} 个无法判断"}}
+
+
+def check_all_updates() -> dict[str, Any]:
+    skills = parse_skills_full()
+    unique_repos = set()
+    for s in skills:
+        try:
+            row = skill_ops.row_for(CANONICAL_ROOT, s["name"])
+            repo, _ = skill_ops.source_for(row)
+            if repo and not repo.startswith("local:") and repo != "待确认":
+                unique_repos.add(repo)
+        except Exception:
+            pass
+
+    for repo in unique_repos:
+        try:
+            skill_ops.ensure_repo_cache(repo, force_fetch=True)
+        except Exception:
+            pass
+
+    results = {}
+    plans = []
+    updatable = []
+    for s in skills:
+        r = check_skill_update(s["name"])
+        results[s["name"]] = r
+        if r.get("has_update"):
+            plans.append(r)
+            updatable.append(s["name"])
+
+    return {
+        "ok": True,
+        "results": results,
+        "plans": plans,
+        "updatable_skills": updatable,
+        "updatable_count": len(updatable),
+        "total_checked": len(skills)
+    }
 
 
 class SkillsAPIHandler(BaseHTTPRequestHandler):
@@ -383,7 +483,7 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
         if not self.authorized(api=True):
             return
         path = urllib.parse.urlparse(self.path).path
-        read_paths = {"/api/check-update", "/api/check-group-update"}
+        read_paths = {"/api/check-update", "/api/check-group-update", "/api/check-all"}
         write_paths = {
             "/api/upgrade-skill", "/api/upgrade-group", "/api/batch-save",
             "/api/git-push", "/api/repair", "/api/tag-stable", "/api/rollback"
@@ -412,8 +512,11 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
                 if path == "/api/check-update":
                     result = check_skill_update(payload.get("skill_name"))
                     plans = [result] if result.get("has_update") else []
-                else:
+                elif path == "/api/check-group-update":
                     result = check_group_update(payload.get("group_id"))
+                    plans = result.get("plans", [])
+                else:
+                    result = check_all_updates()
                     plans = result.get("plans", [])
                 # 预览只驻留本次会话；不接受客户端自填的 commit/hash 或其他路径。
                 now = time.monotonic()

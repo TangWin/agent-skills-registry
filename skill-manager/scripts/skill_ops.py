@@ -11,9 +11,11 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import subprocess
 import tempfile
+import time
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -22,9 +24,9 @@ import audit_skills as audit
 BACKUP_REMOTE = "git@github.com:TangWin/agent-skills-registry.git"
 
 
-def git(root: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=root, capture_output=True,
-                            text=True, timeout=120, check=True)
+def git(root: Path | None, *args: str) -> str:
+    result = subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=root if root is not None else None,
+                            capture_output=True, text=True, timeout=120, check=True)
     return result.stdout.strip()
 
 
@@ -118,18 +120,107 @@ def validate_tree(path: Path) -> None:
             raise ValueError("上游含非常规文件")
 
 
+REPO_CACHE_DIR = Path.home() / ".cache" / "skill-manager" / "repos"
+REPO_CACHE_TTL = 180
+_REMOTE_HEAD_CACHE: dict[str, tuple[float, str]] = {}
+
+
+def probe_remote_head(repo: str, ttl: int = 120) -> str:
+    """快速嗅探远端 HEAD SHA，带短时内存缓存。"""
+    if BACKUP_REMOTE != "git@github.com:TangWin/agent-skills-registry.git":
+        return ""
+    now = time.monotonic()
+    if repo in _REMOTE_HEAD_CACHE:
+        ts, sha = _REMOTE_HEAD_CACHE[repo]
+        if now - ts < ttl:
+            return sha
+    try:
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+        res = subprocess.run(
+            ["git", "-c", "core.quotePath=false", "ls-remote", f"https://github.com/{repo}.git", "HEAD"],
+            capture_output=True, text=True, timeout=30, check=True, env=env
+        )
+        sha = res.stdout.strip().split()[0] if res.stdout.strip().split() else ""
+        if sha:
+            _REMOTE_HEAD_CACHE[repo] = (now, sha)
+        return sha
+    except Exception:
+        return ""
+
+
+def ensure_repo_cache(repo: str, force_fetch: bool = False) -> Path:
+    """维护持久化本地仓库缓存，避免重复网络克隆。"""
+    REPO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    slug = repo.replace("/", "@")
+    cache_path = REPO_CACHE_DIR / slug
+    stamp_file = cache_path / ".FETCH_STAMP"
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+
+    if not (cache_path / ".git").exists():
+        temp_dir = cache_path.with_name(f"{slug}.tmp.{secrets.token_hex(4)}")
+        try:
+            subprocess.run(
+                ["git", "-c", "core.quotePath=false", "clone", "--filter=blob:none", f"https://github.com/{repo}.git", str(temp_dir)],
+                cwd=REPO_CACHE_DIR, capture_output=True, text=True, timeout=60, check=True, env=env
+            )
+            temp_dir.rename(cache_path)
+            stamp_file.write_text(str(int(time.time())), encoding="utf-8")
+        except Exception:
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            raise
+    else:
+        last_fetch = 0
+        try:
+            if stamp_file.exists():
+                last_fetch = int(stamp_file.read_text(encoding="utf-8").strip())
+        except Exception:
+            last_fetch = 0
+        now = int(time.time())
+        if force_fetch or (now - last_fetch > REPO_CACHE_TTL):
+            try:
+                subprocess.run(
+                    ["git", "-c", "core.quotePath=false", "fetch", "--filter=blob:none", "origin"],
+                    cwd=cache_path, capture_output=True, text=True, timeout=30, check=True, env=env
+                )
+                stamp_file.write_text(str(now), encoding="utf-8")
+            except Exception:
+                pass
+    return cache_path
+
+
 @contextmanager
 def checkout(repo: str, revision: str | None = None):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("仓库名非法")
     if revision is not None and not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise ValueError("必须使用完整 commit")
-    with tempfile.TemporaryDirectory(prefix="skill-source-") as temp:
-        dest = Path(temp) / "repo"
-        git(Path(temp), "clone", "--filter=blob:none", "--no-checkout", f"https://github.com/{repo}.git", str(dest))
-        commit = git(dest, "rev-parse", revision or "HEAD")
-        git(dest, "-c", "core.hooksPath=/dev/null", "checkout", "--detach", commit)
-        yield dest, commit
+
+    cache_repo = None
+    try:
+        cache_repo = ensure_repo_cache(repo)
+    except Exception:
+        cache_repo = None
+
+    if cache_repo is not None:
+        with tempfile.TemporaryDirectory(prefix="skill-source-") as temp:
+            dest = Path(temp) / "repo"
+            target_commit = revision or git(cache_repo, "rev-parse", "HEAD")
+            git(cache_repo, "-c", "core.hooksPath=/dev/null", "worktree", "add", "--detach", str(dest), target_commit)
+            try:
+                yield dest, target_commit
+            finally:
+                try:
+                    git(cache_repo, "worktree", "remove", "--force", str(dest))
+                except Exception:
+                    pass
+    else:
+        with tempfile.TemporaryDirectory(prefix="skill-source-") as temp:
+            dest = Path(temp) / "repo"
+            git(Path(temp), "clone", "--filter=blob:none", "--no-checkout", f"https://github.com/{repo}.git", str(dest))
+            commit = git(dest, "rev-parse", revision or "HEAD")
+            git(dest, "-c", "core.hooksPath=/dev/null", "checkout", "--detach", commit)
+            yield dest, commit
 
 
 def lock_record(root: Path, name: str) -> dict[str, Any] | None:
@@ -209,19 +300,44 @@ def prepare(root: Path, name: str) -> dict[str, Any]:
     baseline = base_revision(row, lock)
     if lock and (lock.get("repo"), lock.get("subpath")) != (repo, subpath):
         raise ValueError("清单来源与锁定记录不一致")
+    if lock and local_hash != lock.get("content_hash"):
+        raise ValueError("本地内容与登记基线不一致，必须先处理本地定制或版本漂移")
+
+    remote_head = probe_remote_head(repo)
+    if remote_head and (remote_head.startswith(baseline) or baseline.startswith(remote_head)):
+        return {
+            "ok": True, "name": name, "repo": repo, "subpath": subpath,
+            "current_version": baseline, "latest_version": remote_head,
+            "has_update": False,
+            "status": "latest",
+            "message": "已是最新版本",
+            "local_hash": local_hash, "target_hash": local_hash,
+            "manifest_hash": hashlib.sha256((root / "SKILLS.md").read_bytes()).hexdigest(),
+            "diff_summary": {"ok": True, "base_version": baseline, "target_version": remote_head,
+                             "diff_stat": "该 skill 已是最新版本",
+                             "commits": [], "summary_bullets": ["当前版本与上游保持一致"],
+                             "patch": "", "truncated": False, "patch_hash": ""},
+            "review_required": []
+        }
+
     with checkout(repo) as (clone, commit):
         base = git(clone, "rev-parse", "--verify", f"{baseline}^{{commit}}")
         git(clone, "merge-base", "--is-ancestor", base, commit)
         source = clone / subpath
         validate_tree(source)
         target_hash = audit.folder_hash(source)
-        with tempfile.TemporaryDirectory(prefix="skill-baseline-") as temp:
-            baseline_hash = snapshot_at(clone, base, subpath, Path(temp) / "baseline")
+        if base == commit:
+            baseline_hash = target_hash
+            changes = ""
+            patch = ""
+        else:
+            with tempfile.TemporaryDirectory(prefix="skill-baseline-") as temp:
+                baseline_hash = snapshot_at(clone, base, subpath, Path(temp) / "baseline")
+            args = ["diff", "--name-status", base, commit, "--", subpath or "."]
+            changes = git(clone, *args)
+            patch = git(clone, "diff", "--no-ext-diff", base, commit, "--", subpath or ".")
         if local_hash != baseline_hash or (lock and local_hash != lock["content_hash"]):
             raise ValueError("本地内容与登记基线不一致，必须先处理本地定制或版本漂移")
-        args = ["diff", "--name-status", base, commit, "--", subpath or "."]
-        changes = git(clone, *args)
-        patch = git(clone, "diff", "--no-ext-diff", base, commit, "--", subpath or ".")
         patch_bytes = patch.encode("utf-8")
         result = {
             "ok": True, "name": name, "repo": repo, "subpath": subpath,
