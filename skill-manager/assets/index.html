@@ -1175,7 +1175,6 @@
             updateResults.value[skillName] = data;
             if (data.ok && data.has_update) {
               showToast(`${skillName} 发现新版本：${data.latest_version ? data.latest_version.slice(0, 7) : '最新'}`);
-              upgradeSkill(skillName);
             } else if (data.ok) {
               showToast(`${skillName} ${data.message || '已是最新版本'}`);
             } else {
@@ -1200,8 +1199,7 @@
             groupUpdateResults.value[groupId] = data;
             if (data.ok && data.has_update) {
               const count = data.updatable_skills ? data.updatable_skills.length : 0;
-              showToast(`套件发现新版本，共 ${count} 个技能可升级`);
-              upgradeGroup(groupId);
+              showToast(`套件检查完成，共 ${count} 个技能可升级`);
             } else if (data.ok) {
               showToast(data.message || `套件已是最新版本`);
             } else {
@@ -1303,9 +1301,28 @@
           }
         };
 
-        const upgradeSkill = (name) => {
-          const plan = updateResults.value[name];
-          if (!plan?.plan_id && !plan?.diff_summary) return showToast('请先重新检查更新', 'error');
+        const upgradeSkill = async (name) => {
+          let plan = updateResults.value[name];
+          if (!plan?.plan_id || !plan?.diff_summary) {
+            upgradingSkillName.value = name;
+            showToast(`正在拉取 ${name} 的差异补丁与变更详情...`);
+            try {
+              const res = await fetch('/api/prepare-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skill_name: name })
+              });
+              const data = await res.json();
+              if (!data.ok) throw new Error(data.error || '准备更新失败');
+              plan = data;
+              updateResults.value[name] = data;
+            } catch (e) {
+              showToast('拉取补丁失败：' + e.message, 'error');
+              return;
+            } finally {
+              upgradingSkillName.value = null;
+            }
+          }
           activeChangelog.value = {
             title: name,
             data: plan.diff_summary,
@@ -1318,9 +1335,28 @@
           };
         };
 
-        const upgradeGroup = (id) => {
-          const result = groupUpdateResults.value[id];
-          if (!result?.plan_id && !result?.diff_summary) return showToast('请先重新检查套件', 'error');
+        const upgradeGroup = async (id) => {
+          let result = groupUpdateResults.value[id];
+          if (!result?.plan_id || !result?.diff_summary) {
+            upgradingGroupId.value = id;
+            showToast('正在准备套件合并更新与补丁预览...');
+            try {
+              const res = await fetch('/api/prepare-group-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_id: id })
+              });
+              const data = await res.json();
+              if (!data.ok) throw new Error(data.error || '准备套件更新失败');
+              result = data;
+              groupUpdateResults.value[id] = data;
+            } catch (e) {
+              showToast('准备套件失败：' + e.message, 'error');
+              return;
+            } finally {
+              upgradingGroupId.value = null;
+            }
+          }
           const plans = result.plans || [];
           activeChangelog.value = {
             title: '套件合并更新预览',

@@ -13,6 +13,7 @@ import time
 import subprocess
 import sys
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -227,7 +228,23 @@ def parse_skills_full() -> list[dict[str, Any]]:
     return skills
 
 
-def check_skill_update(skill_name: str) -> dict[str, Any]:
+def prefetch_all_remote_heads(unique_repos: list[str]) -> dict[str, str]:
+    """多线程并发嗅探所有独立仓库的最新 HEAD，避免串行阻塞。"""
+    if not unique_repos:
+        return {}
+    results = {}
+    with ThreadPoolExecutor(max_workers=min(len(unique_repos), 8)) as executor:
+        future_to_repo = {executor.submit(skill_ops.probe_remote_head, r): r for r in unique_repos}
+        for future in future_to_repo:
+            repo = future_to_repo[future]
+            try:
+                results[repo] = future.result()
+            except Exception:
+                results[repo] = ""
+    return results
+
+
+def check_skill_update(skill_name: str, prepare_diff: bool = False) -> dict[str, Any]:
     try:
         row = skill_ops.row_for(CANONICAL_ROOT, skill_name)
         source_val = row.get("GitHub或官网", "")
@@ -257,14 +274,16 @@ def check_skill_update(skill_name: str) -> dict[str, Any]:
                 "ok": False,
                 "name": skill_name,
                 "status": "unknown",
-                "error": "连接 GitHub 超时，未能获取最新版本",
+                "error": "连接 GitHub 失败，无法获取上游版本",
                 "has_update": False
             }
 
         manifest_hash = hashlib.sha256((CANONICAL_ROOT / "SKILLS.md").read_bytes()).hexdigest()
         local_hash = audit_skills.folder_hash(skill_ops.checked_target(CANONICAL_ROOT, row))
 
-        if remote_head.startswith(baseline) or baseline.startswith(remote_head):
+        is_same = remote_head.startswith(baseline) or baseline.startswith(remote_head)
+
+        if is_same:
             return {
                 "ok": True,
                 "name": skill_name,
@@ -289,17 +308,38 @@ def check_skill_update(skill_name: str) -> dict[str, Any]:
                 }
             }
         else:
+            # 轻量检查模式：直接返回发现新版本，0毫秒完成，避免在检查更新阶段做全量克隆卡死！
+            if not prepare_diff:
+                return {
+                    "ok": True,
+                    "name": skill_name,
+                    "repo": repo,
+                    "subpath": subpath,
+                    "current_version": baseline[:8] if len(baseline) >= 40 else baseline,
+                    "latest_version": remote_head[:8] if len(remote_head) >= 40 else remote_head,
+                    "has_update": True,
+                    "status": "updatable",
+                    "message": f"发现新版本 ({remote_head[:8]})",
+                    "local_hash": local_hash,
+                    "manifest_hash": manifest_hash,
+                }
+            # 只有在明确需要 diff / 升级时才执行 prepare
             return skill_ops.prepare(CANONICAL_ROOT, skill_name)
     except Exception as exc:
         return {"ok": False, "status": "unknown", "error": str(exc)}
 
 
-def check_group_update(group_id: str) -> dict[str, Any]:
+def prepare_skill_update(skill_name: str) -> dict[str, Any]:
+    """按需拉取补丁并准备单个技能的升级计划。"""
+    return check_skill_update(skill_name, prepare_diff=True)
+
+
+def check_group_update(group_id: str, prepare_diff: bool = False) -> dict[str, Any]:
     skills = [s for s in parse_skills_full() if s["group_id"] == group_id]
     if not skills:
         return {"ok": False, "error": "套件不存在"}
 
-    results = [check_skill_update(s["name"]) for s in skills]
+    results = [check_skill_update(s["name"], prepare_diff=prepare_diff) for s in skills]
     failures = [r for r in results if not r["ok"]]
     plans = [r for r in results if r.get("has_update")]
     return {"ok": not failures, "group_id": group_id, "has_update": bool(plans),
@@ -308,7 +348,12 @@ def check_group_update(group_id: str) -> dict[str, Any]:
             "updatable_skills": [r["name"] for r in plans], "results": results,
             "diff_summary": {"ok": not failures, "commits": [],
                              "summary_bullets": [f'{r["name"]}: {r.get("latest_version", "最新")}' for r in plans],
-                             "diff_stat": f"{len(plans)} 个 skill 内容变化，{len(failures)} 个无法判断"}}
+                             "diff_stat": f"{len(plans)} 个 skill 发现新版本" if not prepare_diff else f"{len(plans)} 个 skill 内容变化"}}
+
+
+def prepare_group_update(group_id: str) -> dict[str, Any]:
+    """按需准备套件的全部更新计划与合并补丁。"""
+    return check_group_update(group_id, prepare_diff=True)
 
 
 def check_all_updates() -> dict[str, Any]:
@@ -323,26 +368,21 @@ def check_all_updates() -> dict[str, Any]:
         except Exception:
             pass
 
-    for repo in unique_repos:
-        try:
-            skill_ops.ensure_repo_cache(repo, force_fetch=True)
-        except Exception:
-            pass
+    # 并发嗅探所有仓库 HEAD，避免串行网络等待
+    prefetch_all_remote_heads(list(unique_repos))
 
     results = {}
-    plans = []
     updatable = []
     for s in skills:
-        r = check_skill_update(s["name"])
+        r = check_skill_update(s["name"], prepare_diff=False)
         results[s["name"]] = r
         if r.get("has_update"):
-            plans.append(r)
             updatable.append(s["name"])
 
     return {
         "ok": True,
         "results": results,
-        "plans": plans,
+        "plans": [],
         "updatable_skills": updatable,
         "updatable_count": len(updatable),
         "total_checked": len(skills)
@@ -483,7 +523,10 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
         if not self.authorized(api=True):
             return
         path = urllib.parse.urlparse(self.path).path
-        read_paths = {"/api/check-update", "/api/check-group-update", "/api/check-all"}
+        read_paths = {
+            "/api/check-update", "/api/check-group-update", "/api/check-all",
+            "/api/prepare-update", "/api/prepare-group-update"
+        }
         write_paths = {
             "/api/upgrade-skill", "/api/upgrade-group", "/api/batch-save",
             "/api/git-push", "/api/repair", "/api/tag-stable", "/api/rollback"
@@ -511,13 +554,19 @@ class SkillsAPIHandler(BaseHTTPRequestHandler):
             if path in read_paths:
                 if path == "/api/check-update":
                     result = check_skill_update(payload.get("skill_name"))
+                    plans = []
+                elif path == "/api/prepare-update":
+                    result = prepare_skill_update(payload.get("skill_name"))
                     plans = [result] if result.get("has_update") else []
                 elif path == "/api/check-group-update":
                     result = check_group_update(payload.get("group_id"))
+                    plans = []
+                elif path == "/api/prepare-group-update":
+                    result = prepare_group_update(payload.get("group_id"))
                     plans = result.get("plans", [])
                 else:
                     result = check_all_updates()
-                    plans = result.get("plans", [])
+                    plans = []
                 # 预览只驻留本次会话；不接受客户端自填的 commit/hash 或其他路径。
                 now = time.monotonic()
                 self.server.plans = {key: value for key, value in self.server.plans.items() if now - value[0] < 900}

@@ -121,31 +121,68 @@ def validate_tree(path: Path) -> None:
 
 
 REPO_CACHE_DIR = Path.home() / ".cache" / "skill-manager" / "repos"
-REPO_CACHE_TTL = 180
+REPO_CACHE_TTL = 300
+HEAD_CACHE_FILE = Path.home() / ".cache" / "skill-manager" / "remote_heads.json"
 _REMOTE_HEAD_CACHE: dict[str, tuple[float, str]] = {}
 
 
-def probe_remote_head(repo: str, ttl: int = 120) -> str:
-    """快速嗅探远端 HEAD SHA，带短时内存缓存。"""
+def _load_disk_head_cache() -> None:
+    try:
+        if HEAD_CACHE_FILE.exists():
+            data = json.loads(HEAD_CACHE_FILE.read_text(encoding="utf-8"))
+            now = time.time()
+            for r, v in data.items():
+                if isinstance(v, dict) and now - v.get("ts", 0) < 1800:
+                    _REMOTE_HEAD_CACHE[r] = (time.monotonic() - (now - v["ts"]), v.get("sha", ""))
+    except Exception:
+        pass
+
+
+def _save_disk_head_cache() -> None:
+    try:
+        HEAD_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        now_epoch = time.time()
+        now_mono = time.monotonic()
+        data = {}
+        for r, (ts, sha) in _REMOTE_HEAD_CACHE.items():
+            if sha:
+                data[r] = {"ts": now_epoch - (now_mono - ts), "sha": sha}
+        HEAD_CACHE_FILE.write_text(json.dumps(data), encoding="utf-8")
+    except Exception:
+        pass
+
+
+_load_disk_head_cache()
+
+
+def probe_remote_head(repo: str, ttl: int = 1800) -> str:
+    """快速嗅探远端 HEAD SHA，带持久化缓存与失败负缓存。"""
     if BACKUP_REMOTE != "git@github.com:TangWin/agent-skills-registry.git":
         return ""
     now = time.monotonic()
+    last_known_sha = ""
     if repo in _REMOTE_HEAD_CACHE:
         ts, sha = _REMOTE_HEAD_CACHE[repo]
-        if now - ts < ttl:
+        if sha:
+            last_known_sha = sha
+        limit = ttl if sha else 180
+        if now - ts < limit:
             return sha
     try:
         env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
         res = subprocess.run(
             ["git", "-c", "core.quotePath=false", "ls-remote", f"https://github.com/{repo}.git", "HEAD"],
-            capture_output=True, text=True, timeout=30, check=True, env=env
+            capture_output=True, text=True, timeout=35, check=True, env=env
         )
         sha = res.stdout.strip().split()[0] if res.stdout.strip().split() else ""
+        _REMOTE_HEAD_CACHE[repo] = (now, sha or last_known_sha)
         if sha:
-            _REMOTE_HEAD_CACHE[repo] = (now, sha)
-        return sha
+            _save_disk_head_cache()
+        return sha or last_known_sha
     except Exception:
-        return ""
+        # 网络异常时，降级使用上次成功的已知 SHA，避免因偶发抖动导致反复阻塞
+        _REMOTE_HEAD_CACHE[repo] = (now, last_known_sha)
+        return last_known_sha
 
 
 def ensure_repo_cache(repo: str, force_fetch: bool = False) -> Path:
@@ -161,7 +198,7 @@ def ensure_repo_cache(repo: str, force_fetch: bool = False) -> Path:
         try:
             subprocess.run(
                 ["git", "-c", "core.quotePath=false", "clone", "--filter=blob:none", f"https://github.com/{repo}.git", str(temp_dir)],
-                cwd=REPO_CACHE_DIR, capture_output=True, text=True, timeout=60, check=True, env=env
+                cwd=REPO_CACHE_DIR, capture_output=True, text=True, timeout=300, check=True, env=env
             )
             temp_dir.rename(cache_path)
             stamp_file.write_text(str(int(time.time())), encoding="utf-8")
@@ -181,7 +218,7 @@ def ensure_repo_cache(repo: str, force_fetch: bool = False) -> Path:
             try:
                 subprocess.run(
                     ["git", "-c", "core.quotePath=false", "fetch", "--filter=blob:none", "origin"],
-                    cwd=cache_path, capture_output=True, text=True, timeout=30, check=True, env=env
+                    cwd=cache_path, capture_output=True, text=True, timeout=60, check=True, env=env
                 )
                 stamp_file.write_text(str(now), encoding="utf-8")
             except Exception:
