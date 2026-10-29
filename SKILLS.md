@@ -58,6 +58,7 @@
 | if-then-planning | `~/.agents/skills/if-then-planning` | 本地自建（本次会话） | 制定和复盘 If–Then 计划，按执行证据调整行动 | `0.3.1 / SKILL SHA256 8927e0001cca` | 安装已审查的0.3.1包；仅Markdown与references；本地维护，无远端自动更新；未锁定候选 | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-10-23（仅本地安装校验） |
 | prove-it | `~/.agents/skills/prove-it` | 本地自建 | 让 agent 拿证据交差，同一个错不再犯第二次 | `0.1.0 / SKILL SHA256 0e9e07bf0ea3` | 本地维护；仅 Markdown 与 openai.yaml；无远端自动更新；未锁定候选 | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-10-27（仅本地安装校验） |
 
+| release-cleanup | `~/.agents/skills/release-cleanup` | local:/Users/tangw/Documents/iwhaleProjects/南京新工/开发/code/business-app/nros-mall-java/ai_work/resources/工作流/发布收尾/release-cleanup | 发布后归回文档、校验备份并清理本地功能 worktree 和分支 | `local-20261029` | 本地自研；31项真实Git测试通过，独立复审通过；正常两次调用，冲突处理与断点续跑；候选版本，未标记试用稳定 | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-10-29 |
 ## 待确认纳管
 
 当前无待确认纳管项。迁移前的冲突版本已保存在 `/Users/tangw/skill-migration-backup/20260823-cc-switch-migration`，未删除。
