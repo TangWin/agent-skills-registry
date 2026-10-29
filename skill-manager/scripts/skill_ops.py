@@ -1017,10 +1017,27 @@ def register_skill(root: Path, name: str, target_path: str, *, source: str = "�
         return {"ok": True, "name": name, "message": f"{name} 已成功登记并独立提交"}
 
 
+def upgrade_skill(root: Path, name: str) -> dict[str, Any]:
+    """检查并执行单个技能的升级，通过安全事务生成独立候选提交。"""
+    plan = prepare(root, name)
+    if not plan.get("has_update"):
+        return {
+            "ok": True,
+            "name": name,
+            "updated": False,
+            "message": plan.get("message", "已是最新版本，无需升级"),
+            "current_version": plan.get("current_version")
+        }
+    res = apply(root, plan)
+    res["updated"] = True
+    res["name"] = name
+    return res
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     # 兼容位置参数调用 skill_ops.py check <name> 或 skill_ops.py recover
-    parser.add_argument("command", choices=["check", "recover", "repair", "tag-stable", "rollback", "install", "register"])
+    parser.add_argument("command", choices=["check", "check-all", "upgrade", "recover", "repair", "tag-stable", "rollback", "install", "register"])
     parser.add_argument("arg1", nargs="?", help="skill 名称、仓库地址或来源")
     parser.add_argument("arg2", nargs="?", help="标签名或目标路径")
     parser.add_argument("--subpath", default="", help="仓库子目录")
@@ -1041,6 +1058,13 @@ def main() -> int:
             if not args.arg1:
                 raise ValueError("check 命令必须提供 skill 名称")
             result = prepare(root, args.arg1)
+        elif cmd == "check-all":
+            from web_server import check_all_updates
+            result = check_all_updates()
+        elif cmd == "upgrade":
+            if not args.arg1:
+                raise ValueError("upgrade 命令必须提供 skill 名称")
+            result = upgrade_skill(root, args.arg1)
         elif cmd == "recover":
             with exclusive(root):
                 restore_transaction(root)

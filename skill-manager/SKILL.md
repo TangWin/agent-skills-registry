@@ -35,16 +35,18 @@ description: 统一管理本机用户级 Agent skills。用户要求盘点、登
 
 ## 功能入口
 
-- 命令行：
+- 命令行与 Agent 原生交互（核心推荐）：
+  - `skill_ops.py check-all`：并发探测全量技能上游更新（秒级完成），输出可升级列表与新旧版本。
+  - `skill_ops.py check <skill>`：检查单个技能更新并获取完整 `diff_summary` 与 `patch` 补丁。
+  - `skill_ops.py upgrade <skill>`：在确认变更后安全升级目标技能，事务隔离并生成独立候选提交。
   - `audit_skills.py`：只读审计；加 `--fix` 自动修复可安全处理的软链接问题（漏链、死链、无效链）。
   - `skill_ops.py repair`：一键安全修复各 Agent 目录下的软链接异常。
-  - `skill_ops.py check <skill>`：检查更新（支持 GitHub 仓库、monorepo 子目录及本地开发工作区源 `local:<path>`）。
   - `skill_ops.py install <source>`：规范安装新技能（支持 GitHub 仓库或本地目录），校验后写入锁定、更新清单、创建软链接并独立提交。
   - `skill_ops.py register <name> <target>`：规范登记本地已存在目录或外部 App 自管软链接。
   - `skill_ops.py tag-stable <skill> [--push]`：为试用合格的技能标记稳定标签（`stable/<skill>/<version>`），可选推送到远端备份。
   - `skill_ops.py rollback <skill> [tag]`：列出或安全回退到历史稳定标签并独立提交。
   - `skill_ops.py recover`：恢复更新、安装或启用范围变更留下的中断事务。
-- Web 控制台：检查更新；开启写入模式后，可确认更新、修改 Agent 启用范围（含 Antigravity）、一键修复软链接、打标与回退、推送备份。全部变更均受进程互斥锁与脚本事务保护。
+- Web 控制台（备用大盘看板）：供用户需要全局扫盘或批量鼠标勾选时使用；默认不启动。全部变更均受进程互斥锁与脚本事务保护。
 
 ## 首次盘点或审计
 
@@ -102,22 +104,28 @@ python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check <sk
 7. 运行本 skill 的审计脚本和可用的 skill validator。
 8. 仅在验证成功且用户已授权本次安装时，在 `/Users/tangw/.agents/skills` 创建一个独立候选提交；试用通过后按 Git 版本与远端备份规则标记稳定。
 
-## 检查更新
+## 检查更新与 Agent 智能摘要
 
-1. 读取 `SKILLS.md`，只处理有明确远端来源和版本依据的行。
-2. 查询远端 tag、release 或 commit；对 monorepo 同时检查登记的子目录。
-3. 解析登记 commit 并验证本地内容；比较固定完整 commit 下该子目录的内容与可执行位，禁止仅比较短 SHA、仓库 HEAD 或发布时间。登记基线无法解析、本地定制、来源不明或网络失败时报告“无法自动判断”，不得捏造更新摘要。
-4. 输出内容变化或无变化；不能验证时显示“无法自动判断”及真实原因，只有证据明确时才判定来源失效。展示真实 patch、文件清单、脚本、hooks、权限和依赖变化。Web 预览绑定完整 commit、内容摘要和清单摘要，15 分钟有效且只能使用一次。
-5. 只报告，不下载覆盖、不修改检查日期。用户明确选择某个 skill 更新后，才进入更新流程。
+1. 用户要求“检查更新”或询问技能状态时：
+   - Agent 优先执行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check-all`；
+   - 用精炼 Markdown 表格直接在对话中输出可升级技能名称、当前版本与最新版本，列出可重点关注的工具。
+2. 用户询问“某技能更新了什么”或请求“升级某技能”时：
+   - Agent 执行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py check <skill>` 获取完整差异；
+   - **由当前 Agent 亲自阅读 `diff_summary.patch` 代码与文档变更，提炼人类可读的结构化中文摘要**：
+     - ① **核心功能变化**：新增了什么能力、工具或命令；
+     - ② **优化与修复**：修复了什么具体问题或提示词调整；
+     - ③ **安全性与风险**：是否引入新依赖、脚本、破坏性修改或权限变化；
+   - 在对话流内清晰展示给用户，并询问是否确认升级。
 
-## 更新
+## 更新执行
 
-1. 运行严格清单与目录审计，检查整个工作区、暂存区、main 分支和远端备份。保留来源不明、本地定制及外部安装器管理的内容，禁止自动覆盖。
-2. 在临时目录检出完整 commit，校验 SKILL.md、非常规文件、软链接、明显敏感文件和可疑凭据；不执行上游脚本。敏感检查仅为基础检查，不替代人工审阅。
-3. 向用户展示固定版本的实际差异，确认后使用同一 commit 下载；下载完成再次检查基线和内容摘要。差异过大被截断时禁止自动更新。
-4. `skill_ops.py` 持有进程锁，将旧目录、清单、锁定记录保存在 Git 元数据目录的事务备份中，再替换目标。使用清单真实路径，支持 `.scoped`；禁止覆盖外部自管链接。
-5. 验证后只暂存目标目录、该项清单修改与 `.skill-locks/<skill>.json`；目标文件即使命中忽略规则也必须纳入提交。从暂存区还原目标目录并核对内容及可执行位摘要与确认版本一致，再创建独立候选提交；不运行仓库 hooks、不自动推送或标记稳定。异常恢复旧目录、清单、锁定记录和暂存区。
-6. 异常退出留下事务时禁止继续写操作。先检查并执行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py recover`；HEAD 出现不相关变化时保留备份并停止自动恢复。
+1. 用户确认升级后（如回复“升级”、“确认”）：
+   - Agent 执行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py upgrade <skill>`；
+   - 脚本自动执行事务隔离升级、核对基线、更新清单和锁定文件，并在 Git 中生成独立的候选版本提交；
+   - Agent 向用户汇报升级完成结果（新 commit 与版本号），提示可日常试用。试用满意后可再按需打标稳定。
+2. 异常处理：
+   - 升级期间出现异常或中断，Agent 运行 `python3 /Users/tangw/.agents/skills/skill-manager/scripts/skill_ops.py recover` 恢复事务；
+   - 若本地存在未提交改动或版本漂移，拒绝覆盖，先向用户报告漂移原因。
 7. Agent 启用范围变更也必须先整批预检再逐项提交；写入前持久化旧清单、旧链接及预期链接状态，中断后通过 `recover` 恢复。恢复时发现链接被其他操作改动则保留事务并停止，禁止覆盖；布局无法满足 Codex/Grok 直读约束时拒绝写入，迁移 `.scoped` 另行展示路径与差异并确认。适用 Agent 是兼容性声明与实际启用范围的共同约束，不能通过取消一个复选框伪装停止直读。
 
 ## 标记稳定与回退
