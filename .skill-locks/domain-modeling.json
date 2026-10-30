@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repo": "mattpocock/skills",
+  "subpath": "skills/engineering/domain-modeling",
+  "commit": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
+  "content_hash": "f539b1fd2f36333c8b8c4a938a0da744b23a118543663b796a7153fd1cf87bd9",
+  "status": "candidate",
+  "management": "git",
+  "installed_at": "2026-10-30T09:16:16.625012+08:00"
+}
