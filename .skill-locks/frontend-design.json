@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repo": "anthropics/skills",
+  "subpath": "skills/frontend-design",
+  "commit": "ca45fc496a3436251f191354091d557da31c15b5",
+  "content_hash": "da98496bc3039fa8edba4ad54b22713e3878c499480edb4f4f5c46b6dd8984f1",
+  "status": "candidate",
+  "management": "git",
+  "installed_at": "2026-10-30T09:05:15.982669+08:00"
+}
