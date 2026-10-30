@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repo": "mattpocock/skills",
+  "subpath": "skills/engineering/code-review",
+  "commit": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
+  "content_hash": "b933124d06d87225ce29a4b57fdabf648f7511a346e7472e42e8baccfbb239fe",
+  "status": "candidate",
+  "management": "git",
+  "installed_at": "2026-10-30T09:15:43.430581+08:00"
+}
