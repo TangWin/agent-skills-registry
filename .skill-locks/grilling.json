@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repo": "mattpocock/skills",
+  "subpath": "skills/productivity/grilling",
+  "commit": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
+  "content_hash": "370af8e99a6a3e438a38ba6f8ed6b765f8cd7676313e25307f13d58652b05d66",
+  "status": "candidate",
+  "management": "git",
+  "installed_at": "2026-10-30T09:16:27.116847+08:00"
+}
