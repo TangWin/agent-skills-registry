@@ -14,7 +14,7 @@
 
 | 名称 | 唯一维护目录 | GitHub或官网 | 简介 | 当前版本、commit 或锁定哈希 | 安装或更新说明 | 适用 Agent | 最后检查 |
 |---|---|---|---|---|---|---|---|
-| asd-ste100 | `~/.agents/skills/asd-ste100` | [danyuchn/asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill) | 消除自然语言与工具描述歧义（ASD-STE100 简明技术英文规范） | `0.4.0 / 3944283` | 仓库根目录 skill；含纯 Python 结构规则 linter (ste-lint.py) | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-10-18 |
+| asd-ste100 | `~/.agents/skills/asd-ste100` | [danyuchn/asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill) | 消除自然语言与工具描述歧义（ASD-STE100 简明技术英文规范） | `8da6b6340aa22faf46fd07db8efbdea010cd38d9` | 仓库根目录 skill；含纯 Python 结构规则 linter (ste-lint.py) | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-10-30 |
 | code-review | `~/.agents/skills/code-review` | [mattpocock/skills](https://github.com/mattpocock/skills) | 并行进行规范与需求符合性审查 | `3cca18b` | 仓库子目录 `skills/engineering/code-review`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-09-05 |
 | codebase-design | `~/.agents/skills/codebase-design` | [mattpocock/skills](https://github.com/mattpocock/skills) | 深模块设计与接口边界方法 | `3cca18b` | 仓库子目录 `skills/engineering/codebase-design`；按子目录差异更新 | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-09-05 |
 | daily-report | `~/.agents/skills/daily-report` | 待确认 | 从 Git、钉钉和手工补录生成日报、周报、月度总结与复盘 | 本地迭代 2026-08-26 | 本地自研迭代：按群拉取消息、私聊自动翻页、昨日计划追问、时区统一、月度总结模式；来源确认前不自动更新 | Codex、Claude Code、Cursor、Grok、Antigravity | 2026-08-26 |

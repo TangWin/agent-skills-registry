@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repo": "danyuchn/asd-ste100-skill",
+  "subpath": "",
+  "commit": "8da6b6340aa22faf46fd07db8efbdea010cd38d9",
+  "content_hash": "a313876ee8129540ceed7e7896c4a38c302ae7ea3785f642a7d476d48a82f1b7",
+  "status": "candidate",
+  "management": "git",
+  "installed_at": "2026-10-30T09:06:00.330394+08:00"
+}
