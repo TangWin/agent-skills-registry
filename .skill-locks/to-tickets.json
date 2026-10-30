@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repo": "mattpocock/skills",
+  "subpath": "skills/engineering/to-tickets",
+  "commit": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
+  "content_hash": "194fff0e9ab93c00e9adfe5724a631e5719749b39e08cf104779e26cc67654a5",
+  "status": "candidate",
+  "management": "git",
+  "installed_at": "2026-10-30T09:17:19.547927+08:00"
+}
